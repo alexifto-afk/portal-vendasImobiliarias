@@ -143,3 +143,7 @@ Há testes de cálculo, critérios de confirmação financeira, expiração/publ
 ## Upload de fotos e configuração pelo administrador
 
 Veja [ATUALIZAR-FOTOS.md](ATUALIZAR-FOTOS.md) para aplicar esta atualização e configurar comissões e credenciais de pagamento. O comando `npm start` da API aplica as migrações pendentes antes de iniciar o servidor. Use `npm ci --include=dev && npm run generate` no build do Render para manter o CLI Prisma disponível.
+
+## Compra de teste para obter Order ID no Developers
+
+O painel administrativo tem uma aba **Teste Mercado Pago**, com credencial exclusiva `MP_TEST_ACCESS_TOKEN` no Render. Não é necessário ativar cobranças comerciais para testar. Veja o passo a passo em [TESTAR-MERCADO-PAGO.md](TESTAR-MERCADO-PAGO.md). A criação usa Checkout Pro via Orders e não modifica o fluxo comercial por Preferences nem o sistema ALP.

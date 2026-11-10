@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { registerTestCheckoutRoutes } from "./test-checkout.js";
 import express from "express";
 import { registerCommercialRoutes } from "./commercial-settings.js";
 import { registerImageRoutes, uploadId } from "./image-uploads.js";
@@ -9,12 +10,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
-import {
-  terms,
-  commission,
-  paymentMatches,
-  publicFields,
-} from "./rules.js";
+import { terms, commission, paymentMatches, publicFields } from "./rules.js";
 const db = new PrismaClient(),
   app = express(),
   env = process.env;
@@ -137,6 +133,7 @@ const getCommercial = registerCommercialRoutes(app, {
   audit,
 });
 registerImageRoutes(app, { db, auth, wrap });
+registerTestCheckoutRoutes(app, { db, auth, admin, wrap, env });
 app.post(
   "/api/auth/register",
   authLimit,
