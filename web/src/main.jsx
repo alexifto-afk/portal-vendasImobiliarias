@@ -1,0 +1,1562 @@
+import React, { useState, useEffect } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  ArrowUpRight,
+  ArrowRight,
+  MapPin,
+  House,
+  Trees,
+  LandPlot,
+  Search,
+  Menu,
+  X,
+  Check,
+  ShieldCheck,
+  MessageCircle,
+  Plus,
+  LogOut,
+  Building2,
+  Clock,
+  SlidersHorizontal,
+} from "lucide-react";
+import "./style.css";
+const API = (
+  import.meta.env.VITE_API_URL || "http://localhost:3002/api"
+).replace(/\/$/, "");
+const money = (n) =>
+  (n / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const typeNames = { HOUSE: "Casa", LOT: "Lote", FARM: "Fazenda" },
+  statusNames = {
+    PENDING: "Aguardando pagamento e análise",
+    PUBLISHED: "Publicado",
+    REJECTED: "Reprovado — fale com o corretor",
+    CLOSED: "Negociação concluída",
+    CANCELLED: "Cancelado",
+  };
+const initialConfig = {
+  brokerName: "Lourival Missias Pereira",
+  brokerPhone: "5563999915770",
+  brokerCreci: "778D-22",
+  adPrice: 2990,
+  featuredPrice: 5990,
+  durationDays: 30,
+  commercialEnabled: false,
+  saleCommissionBps: 0,
+  rentCommissionBps: 0,
+};
+const demo = [
+  {
+    id: "demo-casa",
+    title: "Uma casa para viver novos capítulos",
+    type: "HOUSE",
+    purpose: "SALE",
+    city: "Palmas",
+    neighborhood: "Plano Diretor Sul",
+    price: 68000000,
+    area: 180,
+    bedrooms: 3,
+    images: [
+      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1100&q=85",
+    ],
+  },
+  {
+    id: "demo-fazenda",
+    title: "Espaço para crescer. Natureza para ficar.",
+    type: "FARM",
+    purpose: "SALE",
+    city: "Porto Nacional",
+    neighborhood: "Zona rural",
+    price: 245000000,
+    area: 960000,
+    bedrooms: 4,
+    images: [
+      "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1100&q=85",
+    ],
+  },
+  {
+    id: "demo-lote",
+    title: "Seu próximo projeto começa aqui",
+    type: "LOT",
+    purpose: "SALE",
+    city: "Palmas",
+    neighborhood: "Região sul",
+    price: 14500000,
+    area: 360,
+    bedrooms: 0,
+    images: [
+      "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1100&q=85",
+    ],
+  },
+];
+let accessToken = sessionStorage.getItem("portal-token") || "";
+async function api(path, options = {}) {
+  let r;
+  try {
+    r = await fetch(API + path, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      ...(options.body ? { body: JSON.stringify(options.body) } : {}),
+    });
+  } catch {
+    throw Error(
+      "Não foi possível conectar ao servidor. Tente novamente em instantes.",
+    );
+  }
+  const d = await r
+    .json()
+    .catch(() => ({ error: "Resposta inválida do servidor." }));
+  if (!r.ok) throw Error(d.error || "Não foi possível concluir.");
+  return d;
+}
+function Field({ label, children, ...props }) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      {children || <input {...props} />}
+    </label>
+  );
+}
+function App() {
+  const [config, setConfig] = useState(initialConfig),
+    [view, setView] = useState("home"),
+    [user, setUser] = useState(null),
+    [listings, setListings] = useState([]),
+    [loading, setLoading] = useState(true),
+    [offline, setOffline] = useState(false),
+    [error, setError] = useState(""),
+    [modal, setModal] = useState(null),
+    [selected, setSelected] = useState(null),
+    [filters, setFilters] = useState({ purpose: "", type: "", city: "" }),
+    [applied, setApplied] = useState({ purpose: "", type: "", city: "" }),
+    [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    Promise.all([
+      api("/config").then(setConfig),
+      api("/listings").then(setListings),
+    ])
+      .catch(() => setOffline(true))
+      .finally(() => setLoading(false));
+    if (accessToken)
+      api("/me")
+        .then(setUser)
+        .catch(() => {
+          sessionStorage.removeItem("portal-token");
+          accessToken = "";
+        });
+  }, []);
+  const go = (v) => {
+    setView(v);
+    setMobile(false);
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const announce = () => (user ? go("owner") : setModal("auth"));
+  const source = offline ? demo : listings,
+    visible = source.filter(
+      (l) =>
+        (!applied.purpose || l.purpose === applied.purpose) &&
+        (!applied.type || l.type === applied.type) &&
+        l.city.toLowerCase().includes(applied.city.toLowerCase()),
+    );
+  const wa = `https://wa.me/${config.brokerPhone}`;
+  return (
+    <>
+      <header className="topbar">
+        <a
+          className="brand"
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            go("home");
+          }}
+        >
+          <span className="brand-icon">
+            <House size={25} />
+          </span>
+          <span>
+            LP<span className="brand-light"> imóveis</span>
+            <small>TOCANTINS · BRASIL</small>
+          </span>
+        </a>
+        <nav className={mobile ? "open" : ""}>
+          <button
+            className={view === "home" ? "active" : ""}
+            onClick={() => go("home")}
+          >
+            Encontrar imóvel
+          </button>
+          <button
+            onClick={() => {
+              go("home");
+              setTimeout(
+                () =>
+                  document
+                    .getElementById("como-funciona")
+                    ?.scrollIntoView({ behavior: "smooth" }),
+                50,
+              );
+            }}
+          >
+            Como funciona
+          </button>
+          <a href={wa} target="_blank" rel="noreferrer">
+            Fale com Lourival <ArrowUpRight size={14} />
+          </a>
+        </nav>
+        <div className="header-actions">
+          {user ? (
+            <button
+              className="text-button"
+              onClick={() => go(user.role === "ADMIN" ? "admin" : "owner")}
+            >
+              Meu painel
+            </button>
+          ) : (
+            <button className="text-button" onClick={() => setModal("auth")}>
+              Entrar
+            </button>
+          )}
+          <button className="primary small" onClick={announce}>
+            Anunciar imóvel <Plus size={16} />
+          </button>
+          <button
+            className="mobile-toggle"
+            aria-label="Abrir menu"
+            onClick={() => setMobile(!mobile)}
+          >
+            <Menu />
+          </button>
+        </div>
+      </header>
+      {error && (
+        <div role="alert" className="notice error">
+          {error}
+          <button onClick={() => setError("")}>×</button>
+        </div>
+      )}
+      {view === "home" ? (
+        <>
+          <section className="hero">
+            <img
+              className="hero-image"
+              alt="Casa contemporânea cercada de natureza"
+              src="https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=2200&q=90"
+            />
+            <div className="hero-shade" />
+            <div className="hero-content">
+              <div className="eyebrow">
+                <span /> O SEU LUGAR ESTÁ AQUI
+              </div>
+              <h1>
+                Novos caminhos.
+                <br />
+                Novos <em>endereços.</em>
+              </h1>
+              <p>
+                Casas, lotes e fazendas no Tocantins.
+                <br />
+                Do primeiro contato à negociação, com Lourival ao seu lado.
+              </p>
+              <a href="#imoveis" className="hero-link">
+                Encontre seu próximo lugar <ArrowUpRight size={20} />
+              </a>
+            </div>
+            <div className="hero-note">
+              <MapPin size={16} /> Tocantins, onde a vida acontece.
+            </div>
+          </section>
+          <section className="search-wrap" aria-label="Buscar imóveis">
+            <div className="search-tabs">
+              <button
+                className={filters.purpose !== "RENT" ? "selected" : ""}
+                onClick={() => setFilters({ ...filters, purpose: "SALE" })}
+              >
+                Quero comprar
+              </button>
+              <button
+                className={filters.purpose === "RENT" ? "selected" : ""}
+                onClick={() => setFilters({ ...filters, purpose: "RENT" })}
+              >
+                Quero alugar
+              </button>
+            </div>
+            <form
+              className="search-box"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setApplied(filters);
+                document
+                  .getElementById("imoveis")
+                  .scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              <Field label="LOCALIZAÇÃO">
+                <div className="input-icon">
+                  <MapPin size={18} />
+                  <input
+                    placeholder="Em qual cidade?"
+                    value={filters.city}
+                    onChange={(e) =>
+                      setFilters({ ...filters, city: e.target.value })
+                    }
+                  />
+                </div>
+              </Field>
+              <Field label="TIPO DE IMÓVEL">
+                <select
+                  value={filters.type}
+                  onChange={(e) =>
+                    setFilters({ ...filters, type: e.target.value })
+                  }
+                >
+                  <option value="">Todos os tipos</option>
+                  <option value="HOUSE">Casa</option>
+                  <option value="LOT">Lote</option>
+                  <option value="FARM">Fazenda</option>
+                </select>
+              </Field>
+              <div className="search-assist">
+                <SlidersHorizontal size={19} />
+                <span>
+                  Um lugar para
+                  <br />
+                  <b>cada novo plano.</b>
+                </span>
+              </div>
+              <button className="primary" type="submit">
+                <Search size={18} /> Buscar imóveis
+              </button>
+            </form>
+          </section>
+          <main className="container">
+            <div className="trust-row">
+              <span>
+                <ShieldCheck size={19} /> Atendimento por corretor
+              </span>
+              <i />
+              <span>
+                <MessageCircle size={19} /> Conversa direta no WhatsApp
+              </span>
+              <i />
+              <span>
+                <MapPin size={19} /> Conexão com o Tocantins
+              </span>
+            </div>
+            <section id="imoveis" className="properties">
+              <div className="section-heading">
+                <div>
+                  <div className="kicker">ENCONTRE O SEU LUGAR</div>
+                  <h2>Uma nova história começa aqui.</h2>
+                  <p>
+                    Explore oportunidades para morar, investir ou estar mais
+                    perto da natureza.
+                  </p>
+                </div>
+                <span className="count">
+                  {loading
+                    ? "Carregando…"
+                    : `${visible.length} imóveis${offline ? " de exemplo" : ""}`}{" "}
+                  <ArrowDown />
+                </span>
+              </div>
+              {offline && (
+                <div className="notice">
+                  Prévia visual: os imóveis abaixo são exemplos e não estão à
+                  venda. Conecte a API para exibir anúncios reais.
+                </div>
+              )}
+              <div className="category-row">
+                {[
+                  ["", "Todos os imóveis", Building2],
+                  ["HOUSE", "Casas", House],
+                  ["LOT", "Lotes", LandPlot],
+                  ["FARM", "Fazendas", Trees],
+                ].map(([value, label, Icon]) => (
+                  <button
+                    key={value}
+                    className={applied.type === value ? "selected" : ""}
+                    onClick={() => {
+                      setApplied({ ...applied, type: value });
+                      setFilters({ ...filters, type: value });
+                    }}
+                  >
+                    <Icon size={17} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="property-grid">
+                {visible.map((l) => (
+                  <article className="property-card" key={l.id}>
+                    <button
+                      className="card-image"
+                      onClick={() => {
+                        setSelected(l);
+                        setModal("property");
+                      }}
+                    >
+                      <img src={l.images[0]} alt={l.title} loading="lazy" />
+                      <span className="image-tag">
+                        {offline
+                          ? "Exemplo"
+                          : l.purpose === "RENT"
+                            ? "Para alugar"
+                            : "À venda"}
+                      </span>
+                      <span className="image-type">{typeNames[l.type]}</span>
+                      <span className="image-arrow">
+                        <ArrowUpRight size={21} />
+                      </span>
+                    </button>
+                    <div className="card-content">
+                      <div className="card-location">
+                        <MapPin size={13} />
+                        {l.neighborhood} · {l.city}, TO
+                      </div>
+                      <h3>
+                        <button
+                          onClick={() => {
+                            setSelected(l);
+                            setModal("property");
+                          }}
+                        >
+                          {l.title}
+                        </button>
+                      </h3>
+                      <div className="card-features">
+                        <span>
+                          <LandPlot size={15} />
+                          {l.area.toLocaleString("pt-BR")} m²
+                        </span>
+                        {l.bedrooms > 0 && (
+                          <span>
+                            <House size={15} />
+                            {l.bedrooms} quartos
+                          </span>
+                        )}
+                      </div>
+                      <div className="card-bottom">
+                        <strong>
+                          {money(l.price)}
+                          {l.purpose === "RENT" && <small>/mês</small>}
+                        </strong>
+                        <button
+                          aria-label={`Ver ${l.title}`}
+                          onClick={() => {
+                            setSelected(l);
+                            setModal("property");
+                          }}
+                        >
+                          <ArrowRight size={19} />
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              {!loading && !visible.length && (
+                <div className="empty">
+                  <House size={35} />
+                  <h3>
+                    {listings.length
+                      ? "Nenhum imóvel para essa busca."
+                      : "Seu próximo imóvel pode estar chegando."}
+                  </h3>
+                  <p>
+                    Fale com Lourival para conhecer oportunidades ou anuncie seu
+                    imóvel.
+                  </p>
+                  <a
+                    className="primary"
+                    href={wa}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Falar com Lourival <ArrowUpRight size={18} />
+                  </a>
+                </div>
+              )}
+            </section>
+            <section className="sell-banner">
+              <div>
+                <span className="eyebrow">PARA QUEM QUER ANUNCIAR</span>
+                <h2>
+                  Seu imóvel merece
+                  <br />
+                  ser <em>encontrado.</em>
+                </h2>
+                <p>
+                  Você anuncia. Lourival cuida dos contatos,
+                  <br />
+                  das visitas e da negociação.
+                </p>
+                <button className="cream" onClick={announce}>
+                  Quero anunciar meu imóvel <ArrowUpRight size={19} />
+                </button>
+              </div>
+              <div className="plan-card">
+                <span>PLANO DIVULGAÇÃO</span>
+                <h3>
+                  {money(config.adPrice)}
+                  <small> / {config.durationDays} dias</small>
+                </h3>
+                <p>Seu próximo negócio começa com visibilidade.</p>
+                <ul>
+                  <li>
+                    <Check size={17} />
+                    Anúncio com até 12 fotos
+                  </li>
+                  <li>
+                    <Check size={17} />
+                    Atendimento centralizado com Lourival
+                  </li>
+                  <li>
+                    <Check size={17} />
+                    Acompanhamento das oportunidades
+                  </li>
+                </ul>
+                <div className="plan-note">
+                  Comissão de intermediação cobrada separadamente, conforme
+                  contrato.
+                </div>
+              </div>
+            </section>
+            <section id="como-funciona" className="how">
+              <div className="kicker">SIMPLES, DO INÍCIO AO FIM</div>
+              <h2>O próximo passo é mais fácil com alguém ao lado.</h2>
+              <div className="steps">
+                {[
+                  [
+                    "01",
+                    "Cadastre seu imóvel",
+                    "Escolha seu plano, informe os detalhes e aceite as condições de divulgação e intermediação.",
+                  ],
+                  [
+                    "02",
+                    "Dê visibilidade ao seu anúncio",
+                    "Após o pagamento confirmado e a análise, seu imóvel fica disponível pelo período contratado.",
+                  ],
+                  [
+                    "03",
+                    "Negocie com acompanhamento",
+                    "Lourival atende os interessados, organiza visitas e acompanha a negociação com você.",
+                  ],
+                ].map(([n, t, d]) => (
+                  <div key={n}>
+                    <span>{n}</span>
+                    <h3>{t}</h3>
+                    <p>{d}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </main>
+        </>
+      ) : view === "owner" ? (
+        <Owner config={config} setError={setError} />
+      ) : (
+        <Admin config={config} setError={setError} />
+      )}
+      <footer>
+        <a className="brand" href="#" onClick={() => go("home")}>
+          <span className="brand-icon">
+            <House size={22} />
+          </span>
+          <span>
+            LP imóveis<small>TOCANTINS · BRASIL</small>
+          </span>
+        </a>
+        <div>
+          <strong>{config.brokerName}</strong>
+          <p>CRECI informado: {config.brokerCreci} · Tocantins</p>
+          <a href={wa} target="_blank" rel="noreferrer">
+            (63) 99991-5770 <ArrowUpRight size={14} />
+          </a>
+        </div>
+        <div className="footer-end">
+          <button onClick={() => setModal("privacy")}>
+            Privacidade e condições
+          </button>
+          <p>© {new Date().getFullYear()} LP Imóveis</p>
+          {user && (
+            <button
+              onClick={() => {
+                accessToken = "";
+                sessionStorage.removeItem("portal-token");
+                setUser(null);
+                go("home");
+              }}
+            >
+              <LogOut size={13} /> Sair da conta
+            </button>
+          )}
+        </div>
+      </footer>
+      {modal && (
+        <div className="modal-shade" onClick={() => setModal(null)}>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label={
+              modal === "auth"
+                ? "Acesso ao portal"
+                : modal === "property"
+                  ? "Detalhes do imóvel"
+                  : "Privacidade e condições"
+            }
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="close"
+              aria-label="Fechar"
+              onClick={() => setModal(null)}
+            >
+              <X />
+            </button>
+            {modal === "auth" ? (
+              <Auth
+                onSuccess={(d) => {
+                  accessToken = d.token;
+                  sessionStorage.setItem("portal-token", d.token);
+                  setUser(d.user);
+                  setModal(null);
+                  go(d.user.role === "ADMIN" ? "admin" : "owner");
+                }}
+              />
+            ) : modal === "property" ? (
+              <Property listing={selected} demo={offline} config={config} />
+            ) : (
+              <>
+                <div className="kicker">TRANSPARÊNCIA</div>
+                <h2>Privacidade e condições</h2>
+                <p>
+                  Os dados de cadastro são utilizados para divulgar seu imóvel e
+                  administrar a contratação. Nome e telefone de interessados são
+                  utilizados por Lourival para atender à solicitação de contato
+                  e registrar visitas e propostas. Dados do proprietário e
+                  endereço completo não aparecem na consulta pública da API.
+                </p>
+                <p>
+                  O preço do anúncio remunera a divulgação pelo prazo contratado
+                  e não garante venda ou aluguel. A comissão de intermediação é
+                  separada e será definida e formalizada em contrato. Não há
+                  renovação automática neste sistema.
+                </p>
+                <p>
+                  Para acesso, correção, exclusão de dados, cancelamento ou
+                  reembolso, fale com Lourival pelo WhatsApp. Prazos de
+                  retenção, identificação do controlador e condições finais de
+                  contratação devem ser revisados e publicados antes de ativar a
+                  operação comercial.
+                </p>
+              </>
+            )}
+          </section>
+        </div>
+      )}
+    </>
+  );
+}
+function ArrowDown() {
+  return <span aria-hidden="true">↓</span>;
+}
+function Auth({ onSuccess }) {
+  const [register, setRegister] = useState(false),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  return (
+    <>
+      <div className="kicker">ÁREA DO PROPRIETÁRIO</div>
+      <h2>
+        {register ? "Seu imóvel, novos caminhos." : "Que bom ter você aqui."}
+      </h2>
+      <p>
+        {register
+          ? "Crie sua conta para anunciar e acompanhar seu imóvel."
+          : "Entre para acompanhar anúncios e negociações."}
+      </p>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          setError("");
+          try {
+            onSuccess(
+              await api(`/auth/${register ? "register" : "login"}`, {
+                method: "POST",
+                body: Object.fromEntries(new FormData(e.currentTarget)),
+              }),
+            );
+          } catch (err) {
+            setError(err.message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {register && (
+          <Field
+            label="Seu nome"
+            name="name"
+            required
+            minLength={3}
+            autoComplete="name"
+          />
+        )}
+        <Field
+          label="E-mail"
+          name="email"
+          type="email"
+          required
+          autoComplete="email"
+        />
+        <Field
+          label="Senha"
+          name="password"
+          type="password"
+          required
+          minLength={register ? 12 : 1}
+          maxLength={128}
+          autoComplete={register ? "new-password" : "current-password"}
+        />
+        {register && <small>Use pelo menos 12 caracteres.</small>}
+        {error && (
+          <p role="alert" className="notice error">
+            {error}
+          </p>
+        )}
+        <button disabled={busy} className="primary wide">
+          {busy ? "Aguarde…" : register ? "Criar minha conta" : "Entrar"}
+          <ArrowRight size={17} />
+        </button>
+      </form>
+      <button
+        className="text-button wide"
+        onClick={() => {
+          setRegister(!register);
+          setError("");
+        }}
+      >
+        {register ? "Já tenho uma conta" : "Quero criar uma conta"}
+      </button>
+    </>
+  );
+}
+function Property({ listing: l, demo, config }) {
+  const [error, setError] = useState(""),
+    [busy, setBusy] = useState(false),
+    [url, setUrl] = useState("");
+  return (
+    <>
+      <img className="detail-cover" src={l.images[0]} alt={l.title} />
+      <div className="kicker">
+        {typeNames[l.type]} · {l.purpose === "RENT" ? "PARA ALUGAR" : "À VENDA"}
+      </div>
+      <h2>{l.title}</h2>
+      <p>
+        <MapPin size={15} /> {l.neighborhood} · {l.city}, TO
+      </p>
+      <h3>
+        {money(l.price)} {l.purpose === "RENT" ? "/mês" : ""}
+      </h3>
+      <p>
+        {l.area.toLocaleString("pt-BR")} m²{" "}
+        {l.bedrooms > 0 ? `· ${l.bedrooms} quartos` : ""}
+      </p>
+      <p className="description">
+        {l.description ||
+          "Imóvel ilustrativo para apresentar o portal. Não se trata de oferta real."}
+      </p>
+      {l.images.length > 1 && (
+        <div className="gallery">
+          {l.images.slice(1).map((src) => (
+            <img key={src} src={src} alt="Outro ângulo do imóvel" />
+          ))}
+        </div>
+      )}
+      {demo ? (
+        <div className="notice">
+          Este é um exemplo visual. O agendamento será habilitado nos anúncios
+          reais.
+        </div>
+      ) : (
+        <>
+          <h3>Vamos conhecer esse imóvel?</h3>
+          <p>O contato e as visitas são organizados por {config.brokerName}.</p>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setError("");
+              setBusy(true);
+              try {
+                const f = Object.fromEntries(new FormData(e.currentTarget));
+                const d = await api(`/listings/${l.id}/leads`, {
+                  method: "POST",
+                  body: {
+                    ...f,
+                    phone: f.phone.replace(/\D/g, ""),
+                    consent: f.consent === "on",
+                  },
+                });
+                setUrl(d.whatsapp);
+              } catch (err) {
+                setError(err.message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <Field label="Seu nome" name="name" required minLength={3} />
+            <Field label="WhatsApp com DDD" name="phone" type="tel" required />
+            <Field label="Mensagem" name="message" maxLength={1000} />
+            <label className="checkbox">
+              <input name="consent" type="checkbox" required />
+              Autorizo o uso dos meus dados para este atendimento e contato pelo
+              corretor.
+            </label>
+            {error && <p className="notice error">{error}</p>}
+            <button disabled={busy} className="primary wide">
+              {busy ? "Registrando…" : "Registrar interesse"}
+              <MessageCircle size={17} />
+            </button>
+          </form>
+          {url && (
+            <a
+              className="cream wide"
+              target="_blank"
+              rel="noreferrer"
+              href={url}
+            >
+              Continuar no WhatsApp de Lourival <ArrowUpRight size={17} />
+            </a>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+function Owner({ config, setError }) {
+  const [items, setItems] = useState([]),
+    [show, setShow] = useState(false),
+    [busy, setBusy] = useState(false),
+    [purpose, setPurpose] = useState("SALE"),
+    [plan, setPlan] = useState("BASIC");
+  const load = () =>
+    api("/owner/listings")
+      .then(setItems)
+      .catch((e) => setError(e.message));
+  useEffect(() => {
+    load();
+  }, []);
+  async function action(l, checkout) {
+    setBusy(true);
+    try {
+      const d = await api(
+        `/owner/listings/${l.id}/${checkout ? "checkout" : "sync-payment"}`,
+        { method: "POST" },
+      );
+      if (checkout) window.location.assign(d.url);
+      else {
+        await load();
+        if (!d.paid)
+          setError(
+            "Pagamento ainda não confirmado pelo provedor. Tente novamente após a compensação.",
+          );
+      }
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <main className="container dashboard">
+      <div className="section-heading">
+        <div>
+          <div className="kicker">ÁREA DO PROPRIETÁRIO</div>
+          <h1>Seus imóveis, novos negócios.</h1>
+          <p>Acompanhe a divulgação e o pagamento dos seus anúncios.</p>
+        </div>
+        <button className="primary" onClick={() => setShow(!show)}>
+          <Plus size={17} /> Novo anúncio
+        </button>
+      </div>
+      {!config.commercialEnabled && (
+        <div className="notice">
+          O portal está em preparação. Novas contratações e cobranças estão
+          desativadas até a configuração comercial.
+        </div>
+      )}
+      {show && (
+        <form
+          className="form-panel"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            try {
+              const f = Object.fromEntries(new FormData(e.currentTarget));
+              await api("/owner/listings", {
+                method: "POST",
+                body: {
+                  ...f,
+                  purpose,
+                  plan,
+                  price: Math.round(Number(f.price) * 100),
+                  area: Number(f.area),
+                  bedrooms: Number(f.bedrooms),
+                  ownerPhone: f.ownerPhone.replace(/\D/g, ""),
+                  images: f.images
+                    .split("\n")
+                    .map((x) => x.trim())
+                    .filter(Boolean),
+                  termsAccepted: f.termsAccepted === "on",
+                  termsVersion: config.termsVersion,
+                },
+              });
+              setShow(false);
+              await load();
+            } catch (err) {
+              setError(err.message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <h2>Conte a história do seu imóvel.</h2>
+          <div className="form-grid">
+            <Field
+              label="Título"
+              name="title"
+              minLength={8}
+              maxLength={100}
+              required
+            />
+            <Field label="Tipo">
+              <select name="type">
+                <option value="HOUSE">Casa</option>
+                <option value="LOT">Lote</option>
+                <option value="FARM">Fazenda</option>
+              </select>
+            </Field>
+            <Field label="Finalidade">
+              <select
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value)}
+              >
+                <option value="SALE">Venda</option>
+                <option value="RENT">Aluguel</option>
+              </select>
+            </Field>
+            <Field
+              label="Valor em reais (no aluguel, valor mensal)"
+              name="price"
+              type="number"
+              min="0.01"
+              max="20000000"
+              step="0.01"
+              required
+            />
+            <Field label="Cidade — Tocantins" name="city" required />
+            <Field
+              label="Bairro ou região pública"
+              name="neighborhood"
+              required
+            />
+            <Field
+              label="Endereço completo (privado)"
+              name="privateAddress"
+              required
+              minLength={8}
+            />
+            <Field
+              label="Seu telefone (privado)"
+              name="ownerPhone"
+              type="tel"
+              required
+            />
+            <Field
+              label="Área em m²"
+              name="area"
+              type="number"
+              min="0.01"
+              step="0.01"
+              required
+            />
+            <Field
+              label="Quartos"
+              name="bedrooms"
+              type="number"
+              min="0"
+              max="100"
+              defaultValue="0"
+              required
+            />
+          </div>
+          <Field label="Descrição pública — não inclua telefone, e-mail ou endereço completo">
+            <textarea
+              name="description"
+              required
+              minLength={30}
+              maxLength={5000}
+              rows={4}
+            />
+          </Field>
+          <Field label="Fotos: uma URL HTTPS por linha (até 12)">
+            <textarea
+              name="images"
+              rows={3}
+              required
+              placeholder="https://..."
+            />
+          </Field>
+          <p className="muted">
+            Nesta primeira versão, use imagens já hospedadas e autorizadas por
+            você.
+          </p>
+          <div className="plan-options">
+            {[
+              ["BASIC", "Divulgação", config.adPrice],
+              ["FEATURED", "Destaque", config.featuredPrice],
+            ].map(([v, t, p]) => (
+              <label className={plan === v ? "chosen" : ""} key={v}>
+                <input
+                  type="radio"
+                  name="plan"
+                  checked={plan === v}
+                  onChange={() => setPlan(v)}
+                />
+                <strong>
+                  {t} · {money(p)}
+                </strong>
+                <span>
+                  {config.durationDays} dias
+                  {v === "FEATURED" ? " · prioridade na listagem" : ""}
+                </span>
+              </label>
+            ))}
+          </div>
+          <h3>Condições comerciais</h3>
+          <p>
+            Anúncio:{" "}
+            {money(plan === "BASIC" ? config.adPrice : config.featuredPrice)}.
+            Comissão:{" "}
+            {(
+              (purpose === "SALE"
+                ? config.saleCommissionBps
+                : config.rentCommissionBps) / 100
+            ).toLocaleString("pt-BR")}
+            %{" "}
+            {purpose === "SALE"
+              ? "do preço final de venda"
+              : "de um aluguel mensal"}
+            , cobrada separadamente do proprietário conforme contrato de
+            intermediação.
+          </p>
+          <div className="terms-text">
+            {config.terms?.[purpose]?.replace(
+              (config.adPrice / 100).toFixed(2),
+              (
+                (plan === "BASIC" ? config.adPrice : config.featuredPrice) / 100
+              ).toFixed(2),
+            ) || "Condições ainda não configuradas."}
+          </div>
+          <label className="checkbox">
+            <input name="termsAccepted" type="checkbox" required />
+            Li e aceito as condições e autorizo a intermediação e o uso das
+            imagens.
+          </label>
+          <button
+            className="primary"
+            disabled={busy || !config.commercialEnabled}
+          >
+            {busy ? "Salvando…" : "Cadastrar e seguir para pagamento"}
+            <ArrowRight size={17} />
+          </button>
+        </form>
+      )}
+      <div className="owner-list">
+        {items.map((l) => (
+          <article className="manage-card" key={l.id}>
+            <img src={l.images[0]} alt="" />
+            <div>
+              <h3>{l.title}</h3>
+              <p>
+                {statusNames[l.status]}
+                {l.expiresAt
+                  ? ` · até ${new Date(l.expiresAt).toLocaleDateString("pt-BR")}`
+                  : ""}
+              </p>
+              <p>
+                {money(l.adPrice)} ·{" "}
+                {l.paidAt ? "Pagamento confirmado" : "Pagamento pendente"} ·
+                Comissão contratada: {l.commissionBps / 100}%
+              </p>
+            </div>
+            {!l.paidAt && (
+              <div className="action-stack">
+                <button
+                  className="primary small"
+                  disabled={busy}
+                  onClick={() => action(l, true)}
+                >
+                  Pagar anúncio
+                </button>
+                <button
+                  className="outline small"
+                  disabled={busy}
+                  onClick={() => action(l, false)}
+                >
+                  Já paguei: verificar
+                </button>
+              </div>
+            )}
+          </article>
+        ))}
+        {!items.length && !show && (
+          <div className="empty">
+            <House size={34} />
+            <h3>Seu primeiro anúncio começa aqui.</h3>
+            <p>Cadastre um imóvel para iniciar.</p>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+function Admin({ config, setError }) {
+  const [items, setItems] = useState([]),
+    [leads, setLeads] = useState([]),
+    [logs, setLogs] = useState([]),
+    [tab, setTab] = useState("listings"),
+    [deal, setDeal] = useState(null),
+    [busy, setBusy] = useState(false);
+  const load = () =>
+    Promise.all([
+      api("/admin/listings").then(setItems),
+      api("/admin/leads").then(setLeads),
+      api("/admin/audit").then(setLogs),
+    ]).catch((e) => setError(e.message));
+  useEffect(() => {
+    load();
+  }, []);
+  async function run(fn) {
+    setBusy(true);
+    try {
+      await fn();
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const received = items
+      .filter((l) => l.paidAt)
+      .reduce((a, l) => a + l.adPrice, 0),
+    commissions = items.reduce((a, l) => a + (l.deal?.commission || 0), 0);
+  return (
+    <main className="container dashboard">
+      <div className="kicker">PAINEL DO CORRETOR</div>
+      <h1>Olá, Lourival.</h1>
+      <p>Da primeira conversa ao próximo negócio.</p>
+      <div className="metrics">
+        <div>
+          <span>Anúncios pagos</span>
+          <strong>{money(received)}</strong>
+        </div>
+        <div>
+          <span>Interessados registrados</span>
+          <strong>{leads.length}</strong>
+        </div>
+        <div>
+          <span>Comissões negociadas</span>
+          <strong>{money(commissions)}</strong>
+        </div>
+      </div>
+      <div className="category-row">
+        {[
+          ["listings", "Anúncios"],
+          ["leads", "Contatos e visitas"],
+          ["audit", "Histórico"],
+        ].map(([v, l]) => (
+          <button
+            key={v}
+            className={tab === v ? "selected" : ""}
+            onClick={() => setTab(v)}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+      {tab === "listings" ? (
+        items.map((l) => (
+          <article className="form-panel" key={l.id}>
+            <div className="section-heading">
+              <div>
+                <h3>{l.title}</h3>
+                <p>
+                  {l.owner.name} · {l.owner.email} · {l.ownerPhone}
+                </p>
+                <p>Endereço privado: {l.privateAddress}</p>
+                <p>
+                  {statusNames[l.status]} ·{" "}
+                  {l.paidAt ? "Pagamento confirmado" : "Pagamento pendente"} ·{" "}
+                  {money(l.adPrice)}
+                </p>
+              </div>
+              <div className="action-stack">
+                {l.status === "PENDING" && (
+                  <button
+                    className="outline small"
+                    disabled={busy}
+                    onClick={() =>
+                      run(async () => {
+                        const d = await api(
+                          `/owner/listings/${l.id}/sync-payment`,
+                          { method: "POST" },
+                        );
+                        if (!d.paid)
+                          throw Error("Nenhum pagamento aprovado encontrado.");
+                      })
+                    }
+                  >
+                    Consultar pagamento
+                  </button>
+                )}
+                {["PENDING", "REJECTED", "PUBLISHED"].includes(l.status) && (
+                  <>
+                    <button
+                      disabled={busy || !l.paidAt}
+                      className="primary small"
+                      onClick={() =>
+                        run(() =>
+                          api(`/admin/listings/${l.id}/review`, {
+                            method: "POST",
+                            body: { approve: true },
+                          }),
+                        )
+                      }
+                    >
+                      Aprovar publicação
+                    </button>
+                    <button
+                      disabled={busy}
+                      className="outline small"
+                      onClick={() =>
+                        run(() =>
+                          api(`/admin/listings/${l.id}/review`, {
+                            method: "POST",
+                            body: { approve: false },
+                          }),
+                        )
+                      }
+                    >
+                      Retirar / reprovar
+                    </button>
+                  </>
+                )}
+                {l.status === "PUBLISHED" && (
+                  <button className="primary small" onClick={() => setDeal(l)}>
+                    Registrar fechamento
+                  </button>
+                )}
+              </div>
+            </div>
+            <details>
+              <summary>Descrição, fotos e aceite para revisão</summary>
+              <p className="description">{l.description}</p>
+              <div className="gallery">
+                {l.images.map((src) => (
+                  <a key={src} href={src} target="_blank" rel="noreferrer">
+                    <img src={src} alt="Imagem para revisão" />
+                  </a>
+                ))}
+              </div>
+              <p>
+                Aceite: {new Date(l.acceptedAt).toLocaleString("pt-BR")} ·{" "}
+                {l.termsVersion}
+              </p>
+              <p>{l.termsText}</p>
+              <p>
+                Confira e remova contatos ou dados privados da publicação:
+                reprove o cadastro e peça novo envio quando necessário.
+              </p>
+            </details>
+            {l.deal && (
+              <div className="deal-box">
+                <p>
+                  Fechamento: {money(l.deal.finalPrice)} · Comissão:{" "}
+                  {money(l.deal.commission)} ·{" "}
+                  {l.deal.commissionPaid ? "Recebida" : "A receber"}
+                </p>
+                <button
+                  disabled={busy}
+                  className="outline small"
+                  onClick={() =>
+                    run(() =>
+                      api(`/admin/deals/${l.deal.id}/commission`, {
+                        method: "PATCH",
+                        body: { paid: !l.deal.commissionPaid },
+                      }),
+                    )
+                  }
+                >
+                  {l.deal.commissionPaid
+                    ? "Desmarcar recebimento"
+                    : "Confirmar recebimento após conferir o crédito"}
+                </button>
+                <button
+                  className="text-button"
+                  onClick={() => setDeal({ ...l, preview: true })}
+                >
+                  Ver minuta para impressão
+                </button>
+              </div>
+            )}
+          </article>
+        ))
+      ) : tab === "leads" ? (
+        leads.map((l) => (
+          <LeadEditor key={l.id} lead={l} busy={busy} run={run} />
+        ))
+      ) : (
+        <div className="form-panel">
+          {logs.map((l) => (
+            <p key={l.id}>
+              <small>{new Date(l.createdAt).toLocaleString("pt-BR")}</small> ·{" "}
+              {l.action} · {l.entityId} · {l.detail}
+            </p>
+          ))}
+        </div>
+      )}
+      {!items.length && tab === "listings" && (
+        <div className="empty">Os anúncios recebidos aparecerão aqui.</div>
+      )}
+      {deal && (
+        <div className="modal-shade">
+          <section className="modal">
+            <button
+              className="close"
+              aria-label="Fechar"
+              onClick={() => setDeal(null)}
+            >
+              <X />
+            </button>
+            {deal.preview ? (
+              <Contract listing={deal} config={config} />
+            ) : (
+              <>
+                <h2>Registrar negociação</h2>
+                <p>
+                  O registro calcula a comissão, encerra a divulgação e prepara
+                  uma minuta. Não cobra a comissão automaticamente.
+                </p>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const f = Object.fromEntries(new FormData(e.currentTarget));
+                    run(async () => {
+                      await api(`/admin/listings/${deal.id}/deal`, {
+                        method: "POST",
+                        body: {
+                          ...f,
+                          finalPrice: Math.round(Number(f.finalPrice) * 100),
+                        },
+                      });
+                      setDeal(null);
+                    });
+                  }}
+                >
+                  <Field
+                    label="Nome completo do comprador / locatário"
+                    name="buyerName"
+                    required
+                    minLength={3}
+                  />
+                  <Field
+                    label="Nome completo do proprietário"
+                    name="sellerName"
+                    defaultValue={deal.owner.name}
+                    required
+                    minLength={3}
+                  />
+                  <Field
+                    label={
+                      deal.purpose === "RENT"
+                        ? "Aluguel mensal fechado (R$)"
+                        : "Preço de venda fechado (R$)"
+                    }
+                    name="finalPrice"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max="20000000"
+                    required
+                  />
+                  <Field label="Condições de pagamento e observações">
+                    <textarea
+                      name="paymentTerms"
+                      required
+                      minLength={10}
+                      rows={4}
+                    />
+                  </Field>
+                  <p>
+                    Comissão contratada: {deal.commissionBps / 100}%{" "}
+                    {deal.purpose === "RENT"
+                      ? "de um aluguel mensal"
+                      : "do valor final"}
+                    .
+                  </p>
+                  <button disabled={busy} className="primary">
+                    Registrar fechamento
+                  </button>
+                </form>
+              </>
+            )}
+          </section>
+        </div>
+      )}
+    </main>
+  );
+}
+function LeadEditor({ lead: l, busy, run }) {
+  return (
+    <form
+      className="form-panel"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const f = Object.fromEntries(new FormData(e.currentTarget));
+        run(() =>
+          api(`/admin/leads/${l.id}`, {
+            method: "PATCH",
+            body: {
+              ...f,
+              visitAt: f.visitAt ? new Date(f.visitAt).toISOString() : null,
+            },
+          }),
+        );
+      }}
+    >
+      <h3>
+        {l.name} · {l.listing.title}
+      </h3>
+      <a
+        href={`https://wa.me/${l.phone.startsWith("55") ? l.phone : "55" + l.phone}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {l.phone} <ArrowUpRight size={14} />
+      </a>
+      <p>{l.message}</p>
+      <div className="form-grid">
+        <Field label="Etapa">
+          <select name="stage" defaultValue={l.stage}>
+            {[
+              ["NEW", "Novo"],
+              ["CONTACTED", "Em atendimento"],
+              ["VISIT", "Visita"],
+              ["PROPOSAL", "Proposta"],
+              ["CLOSED", "Fechado"],
+              ["LOST", "Sem negócio"],
+            ].map(([v, t]) => (
+              <option key={v} value={v}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field
+          label="Visita (horário local)"
+          type="datetime-local"
+          name="visitAt"
+          defaultValue={
+            l.visitAt
+              ? new Date(
+                  new Date(l.visitAt).getTime() -
+                    new Date(l.visitAt).getTimezoneOffset() * 60000,
+                )
+                  .toISOString()
+                  .slice(0, 16)
+              : ""
+          }
+        />
+      </div>
+      <Field label="Propostas e observações">
+        <textarea name="notes" defaultValue={l.notes} maxLength={5000} />
+      </Field>
+      <button disabled={busy} className="outline small">
+        Salvar atendimento
+      </button>
+    </form>
+  );
+}
+function Contract({ listing: l, config }) {
+  const d = l.deal;
+  return (
+    <>
+      <article className="contract">
+        <div className="kicker">MINUTA · REVISÃO OBRIGATÓRIA</div>
+        <h2>
+          Resumo da negociação de{" "}
+          {l.purpose === "RENT" ? "locação" : "compra e venda"}
+        </h2>
+        <p>
+          Documento de apoio. Não constitui contrato completo, assinatura,
+          escritura ou transferência de propriedade. Complete a qualificação das
+          partes, documentos do imóvel e cláusulas aplicáveis com profissional
+          habilitado antes de assinar.
+        </p>
+        <h3>Partes e imóvel</h3>
+        <p>Proprietário: {d.sellerName}</p>
+        <p>
+          {l.purpose === "RENT" ? "Locatário" : "Comprador"}: {d.buyerName}
+        </p>
+        <p>
+          Imóvel: {l.title} · {l.privateAddress} · {l.city}/TO · referência{" "}
+          {l.id}
+        </p>
+        <p>
+          Qualificação das partes, matrícula, cartório e titularidade:
+          __________________________
+        </p>
+        <h3>Valores e condições</h3>
+        <p>
+          {l.purpose === "RENT" ? "Aluguel mensal" : "Preço negociado"}:{" "}
+          {money(d.finalPrice)}
+        </p>
+        <p className="description">{d.paymentTerms}</p>
+        <p>
+          Intermediador: {config.brokerName} · CRECI informado{" "}
+          {config.brokerCreci}
+        </p>
+        <p>
+          Comissão de responsabilidade do proprietário: {l.commissionBps / 100}%
+          = {money(d.commission)}. Prazo e forma de pagamento:
+          __________________________
+        </p>
+        <p>
+          Posse, tributos, garantias, obrigações, rescisão, prazos e demais
+          cláusulas: a completar e revisar.
+        </p>
+        <p>Local e data: __________________________</p>
+        <br />
+        <p>Proprietário: __________________________</p>
+        <p>
+          {l.purpose === "RENT" ? "Locatário" : "Comprador"}:
+          __________________________
+        </p>
+        <p>Intermediador: __________________________</p>
+        <p>Testemunhas e documentos: __________________________</p>
+      </article>
+      <button className="primary no-print" onClick={() => window.print()}>
+        Imprimir / salvar PDF
+      </button>
+    </>
+  );
+}
+createRoot(document.getElementById("root")).render(<App />);

@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: portal-vendas-imobiliarias-api
+    runtime: node
+    rootDir: api
+    plan: free
+    buildCommand: npm ci --include=dev && npm run generate
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_VERSION
+        value: 22.16.0
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: WEB_ORIGIN
+        sync: false
+      - key: BROKER_NAME
+        value: Lourival Missias Pereira
+      - key: BROKER_PHONE
+        value: "5563999915770"
+      - key: BROKER_CRECI
+        value: 778D-22
+      - key: AD_PRICE_CENTS
+        value: "2990"
+      - key: FEATURED_PRICE_CENTS
+        value: "5990"
+      - key: AD_DURATION_DAYS
+        value: "30"
+      - key: SALE_COMMISSION_BPS
+        value: "0"
+      - key: RENT_COMMISSION_BPS
+        value: "0"
+      - key: COMMERCIAL_ENABLED
+        value: "false"

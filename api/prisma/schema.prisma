@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  passwordHash String
+  role String @default("OWNER")
+  listings Listing[]
+  createdAt DateTime @default(now())
+}
+model Listing {
+  id String @id @default(cuid())
+  ownerId String
+  owner User @relation(fields: [ownerId], references: [id])
+  title String
+  description String
+  type String
+  purpose String
+  city String
+  neighborhood String
+  privateAddress String
+  ownerPhone String
+  price Int
+  area Float
+  bedrooms Int @default(0)
+  images String[]
+  status String @default("PENDING")
+  reviewed Boolean @default(false)
+  paidAt DateTime?
+  expiresAt DateTime?
+  adPrice Int
+  plan String @default("BASIC")
+  durationDays Int
+  commissionBps Int
+  termsVersion String
+  acceptedAt DateTime
+  termsText String @db.Text
+  paymentId String? @unique
+  checkoutUrl String?
+  leads Lead[]
+  deal Deal?
+  createdAt DateTime @default(now())
+  @@index([status, expiresAt])
+}
+model Lead {
+  id String @id @default(cuid())
+  listingId String
+  listing Listing @relation(fields: [listingId], references: [id])
+  name String
+  phone String
+  message String
+  stage String @default("NEW")
+  visitAt DateTime?
+  notes String @default("")
+  consentAt DateTime
+  createdAt DateTime @default(now())
+}
+model Deal {
+  id String @id @default(cuid())
+  listingId String @unique
+  listing Listing @relation(fields: [listingId], references: [id])
+  buyerName String
+  sellerName String
+  finalPrice Int
+  commission Int
+  commissionPaid Boolean @default(false)
+  paymentTerms String
+  createdAt DateTime @default(now())
+}
+model Audit {
+  id String @id @default(cuid())
+  actorId String
+  action String
+  entityId String
+  detail String
+  createdAt DateTime @default(now())
+}
