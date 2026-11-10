@@ -82,12 +82,18 @@ export default function TestCheckout({ request }) {
               ? "Credencial de teste preenchida. A conta vendedora será verificada antes de criar a ordem."
               : "No Render → Environment, adicione MP_TEST_ACCESS_TOKEN com o Access Token da aba Teste desta aplicação e faça novo deploy da API. Depois atualize esta página."}
           </div>
+          <div className="notice">
+            Se aparecer “Uma das partes é de teste”, feche todas as janelas
+            anônimas e abra o link em uma nova janela anônima, sem iniciar
+            sessão no Mercado Pago. Este teste via Orders não exige conta de
+            comprador.
+          </div>
           <ol className="test-checkout-steps">
             <li>Crie a compra de teste pelo botão abaixo.</li>
             <li>Copie o link do checkout e abra em uma janela anônima.</li>
             <li>
-              Entre com a conta de comprador de teste e use o cartão e os dados
-              de teste exibidos no Developers.
+              Não entre em nenhuma conta do Mercado Pago. Escolha pagar com
+              cartão e use os dados de teste exibidos no Developers.
             </li>
             <li>Volte aqui e clique em Consultar pagamento.</li>
             <li>
