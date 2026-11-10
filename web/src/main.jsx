@@ -11,15 +11,13 @@ import {
   Menu,
   X,
   Check,
-  ShieldCheck,
   MessageCircle,
   Plus,
   LogOut,
   Building2,
-  Clock,
-  SlidersHorizontal,
 } from "lucide-react";
 import "./style.css";
+import { emptyFilters, findListings, areaLabel } from "./catalog.js";
 const API = (
   import.meta.env.VITE_API_URL || "http://localhost:3002/api"
 ).replace(/\/$/, "");
@@ -129,8 +127,8 @@ function App() {
     [error, setError] = useState(""),
     [modal, setModal] = useState(null),
     [selected, setSelected] = useState(null),
-    [filters, setFilters] = useState({ purpose: "", type: "", city: "" }),
-    [applied, setApplied] = useState({ purpose: "", type: "", city: "" }),
+    [filters, setFilters] = useState(emptyFilters),
+    [sort, setSort] = useState("recommended"),
     [mobile, setMobile] = useState(false);
   useEffect(() => {
     Promise.all([
@@ -155,12 +153,8 @@ function App() {
   };
   const announce = () => (user ? go("owner") : setModal("auth"));
   const source = offline ? demo : listings,
-    visible = source.filter(
-      (l) =>
-        (!applied.purpose || l.purpose === applied.purpose) &&
-        (!applied.type || l.type === applied.type) &&
-        l.city.toLowerCase().includes(applied.city.toLowerCase()),
-    );
+    visible = findListings(source, filters, sort);
+  const hasFilters = Object.values(filters).some(Boolean);
   const wa = `https://wa.me/${config.brokerPhone}`;
   return (
     <>
@@ -239,65 +233,71 @@ function App() {
       )}
       {view === "home" ? (
         <>
-          <section className="hero">
-            <img
-              className="hero-image"
-              alt="Casa contemporânea cercada de natureza"
-              src="https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=2200&q=90"
-            />
-            <div className="hero-shade" />
-            <div className="hero-content">
-              <div className="eyebrow">
-                <span /> O SEU LUGAR ESTÁ AQUI
-              </div>
-              <h1>
-                Novos caminhos.
-                <br />
-                Novos <em>endereços.</em>
-              </h1>
+          <section className="catalog-intro container">
+            <div>
+              <div className="kicker">IMÓVEIS NO TOCANTINS</div>
+              <h1>Qual imóvel você procura?</h1>
               <p>
-                Casas, lotes e fazendas no Tocantins.
-                <br />
-                Do primeiro contato à negociação, com Lourival ao seu lado.
+                Compare casas, lotes e fazendas. Escolha seu imóvel e agende uma
+                visita com Lourival.
               </p>
-              <a href="#imoveis" className="hero-link">
-                Encontre seu próximo lugar <ArrowUpRight size={20} />
-              </a>
             </div>
-            <div className="hero-note">
-              <MapPin size={16} /> Tocantins, onde a vida acontece.
-            </div>
+            <a
+              className="catalog-help"
+              href={wa}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <MessageCircle size={19} />
+              <span>
+                Precisa de ajuda?
+                <strong>
+                  Fale com Lourival <ArrowUpRight size={14} />
+                </strong>
+              </span>
+            </a>
           </section>
-          <section className="search-wrap" aria-label="Buscar imóveis">
-            <div className="search-tabs">
-              <button
-                className={filters.purpose !== "RENT" ? "selected" : ""}
-                onClick={() => setFilters({ ...filters, purpose: "SALE" })}
-              >
-                Quero comprar
-              </button>
-              <button
-                className={filters.purpose === "RENT" ? "selected" : ""}
-                onClick={() => setFilters({ ...filters, purpose: "RENT" })}
-              >
-                Quero alugar
-              </button>
+          <section
+            className="catalog-search container"
+            aria-label="Encontrar imóvel"
+          >
+            <div
+              className="purpose-options"
+              role="group"
+              aria-label="Finalidade"
+            >
+              {[
+                ["", "Todos"],
+                ["SALE", "Comprar"],
+                ["RENT", "Alugar"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  aria-pressed={filters.purpose === value}
+                  className={filters.purpose === value ? "selected" : ""}
+                  onClick={() =>
+                    setFilters({ ...filters, purpose: value, maxPrice: "" })
+                  }
+                >
+                  {label}
+                </button>
+              ))}
             </div>
             <form
-              className="search-box"
+              className="catalog-fields"
               onSubmit={(e) => {
                 e.preventDefault();
-                setApplied(filters);
                 document
                   .getElementById("imoveis")
                   .scrollIntoView({ behavior: "smooth" });
               }}
             >
-              <Field label="LOCALIZAÇÃO">
+              <Field label="Cidade">
                 <div className="input-icon">
                   <MapPin size={18} />
                   <input
-                    placeholder="Em qual cidade?"
+                    aria-label="Cidade"
+                    placeholder="Ex.: Palmas"
                     value={filters.city}
                     onChange={(e) =>
                       setFilters({ ...filters, city: e.target.value })
@@ -305,7 +305,7 @@ function App() {
                   />
                 </div>
               </Field>
-              <Field label="TIPO DE IMÓVEL">
+              <Field label="Tipo de imóvel">
                 <select
                   value={filters.type}
                   onChange={(e) =>
@@ -318,49 +318,101 @@ function App() {
                   <option value="FARM">Fazenda</option>
                 </select>
               </Field>
-              <div className="search-assist">
-                <SlidersHorizontal size={19} />
-                <span>
-                  Um lugar para
-                  <br />
-                  <b>cada novo plano.</b>
-                </span>
-              </div>
+              <Field
+                label={
+                  filters.purpose === "RENT"
+                    ? "Aluguel mensal até"
+                    : "Preço até"
+                }
+              >
+                <select
+                  value={filters.maxPrice}
+                  onChange={(e) =>
+                    setFilters({ ...filters, maxPrice: e.target.value })
+                  }
+                >
+                  <option value="">Qualquer valor</option>
+                  {(filters.purpose === "RENT"
+                    ? [1000, 2000, 3000, 5000, 10000]
+                    : [150000, 300000, 600000, 1000000, 3000000]
+                  ).map((n) => (
+                    <option value={n} key={n}>
+                      {money(n * 100)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               <button className="primary" type="submit">
-                <Search size={18} /> Buscar imóveis
+                <Search size={18} /> Ver imóveis
               </button>
             </form>
           </section>
-          <main className="container">
-            <div className="trust-row">
-              <span>
-                <ShieldCheck size={19} /> Atendimento por corretor
-              </span>
-              <i />
-              <span>
-                <MessageCircle size={19} /> Conversa direta no WhatsApp
-              </span>
-              <i />
-              <span>
-                <MapPin size={19} /> Conexão com o Tocantins
-              </span>
-            </div>
+          <main className="container catalog-main">
             <section id="imoveis" className="properties">
-              <div className="section-heading">
+              <div
+                className="category-row catalog-categories"
+                role="group"
+                aria-label="Escolher tipo de imóvel"
+              >
+                {[
+                  ["", "Todos", Building2],
+                  ["HOUSE", "Casas", House],
+                  ["LOT", "Lotes", LandPlot],
+                  ["FARM", "Fazendas", Trees],
+                ].map(([value, label, Icon]) => (
+                  <button
+                    key={value}
+                    aria-pressed={filters.type === value}
+                    className={filters.type === value ? "selected" : ""}
+                    onClick={() => setFilters({ ...filters, type: value })}
+                  >
+                    <Icon size={20} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="section-heading catalog-results">
                 <div>
-                  <div className="kicker">ENCONTRE O SEU LUGAR</div>
-                  <h2>Uma nova história começa aqui.</h2>
-                  <p>
-                    Explore oportunidades para morar, investir ou estar mais
-                    perto da natureza.
+                  <h2>
+                    {filters.type
+                      ? { HOUSE: "Casas", LOT: "Lotes", FARM: "Fazendas" }[
+                          filters.type
+                        ]
+                      : "Imóveis"}{" "}
+                    {filters.purpose === "RENT"
+                      ? "para alugar"
+                      : filters.purpose === "SALE"
+                        ? "à venda"
+                        : "para você"}
+                  </h2>
+                  <p role="status" aria-live="polite">
+                    {loading
+                      ? "Buscando imóveis disponíveis…"
+                      : `${visible.length} ${visible.length === 1 ? "imóvel encontrado" : "imóveis encontrados"}${offline ? " · exemplos ilustrativos" : ""}`}
+                    {filters.city && ` em ${filters.city}`}
                   </p>
                 </div>
-                <span className="count">
-                  {loading
-                    ? "Carregando…"
-                    : `${visible.length} imóveis${offline ? " de exemplo" : ""}`}{" "}
-                  <ArrowDown />
-                </span>
+                <div className="results-actions">
+                  {hasFilters && (
+                    <button
+                      className="text-button"
+                      onClick={() => setFilters(emptyFilters)}
+                    >
+                      <X size={14} /> Limpar filtros
+                    </button>
+                  )}
+                  <label className="sort-label">
+                    Ordenar por
+                    <select
+                      value={sort}
+                      onChange={(e) => setSort(e.target.value)}
+                    >
+                      <option value="recommended">Recomendados</option>
+                      <option value="price-asc">Menor preço</option>
+                      <option value="price-desc">Maior preço</option>
+                    </select>
+                  </label>
+                </div>
               </div>
               {offline && (
                 <div className="notice">
@@ -368,26 +420,6 @@ function App() {
                   venda. Conecte a API para exibir anúncios reais.
                 </div>
               )}
-              <div className="category-row">
-                {[
-                  ["", "Todos os imóveis", Building2],
-                  ["HOUSE", "Casas", House],
-                  ["LOT", "Lotes", LandPlot],
-                  ["FARM", "Fazendas", Trees],
-                ].map(([value, label, Icon]) => (
-                  <button
-                    key={value}
-                    className={applied.type === value ? "selected" : ""}
-                    onClick={() => {
-                      setApplied({ ...applied, type: value });
-                      setFilters({ ...filters, type: value });
-                    }}
-                  >
-                    <Icon size={17} />
-                    {label}
-                  </button>
-                ))}
-              </div>
               <div className="property-grid">
                 {visible.map((l) => (
                   <article className="property-card" key={l.id}>
@@ -398,7 +430,11 @@ function App() {
                         setModal("property");
                       }}
                     >
-                      <img src={l.images[0]} alt={l.title} loading="lazy" />
+                      <img
+                        src={l.images[0]}
+                        alt={l.title}
+                        loading={visible.indexOf(l) < 3 ? "eager" : "lazy"}
+                      />
                       <span className="image-tag">
                         {offline
                           ? "Exemplo"
@@ -429,7 +465,7 @@ function App() {
                       <div className="card-features">
                         <span>
                           <LandPlot size={15} />
-                          {l.area.toLocaleString("pt-BR")} m²
+                          {areaLabel(l)}
                         </span>
                         {l.bedrooms > 0 && (
                           <span>
@@ -450,25 +486,39 @@ function App() {
                             setModal("property");
                           }}
                         >
-                          <ArrowRight size={19} />
+                          Ver imóvel <ArrowUpRight size={16} />
                         </button>
                       </div>
                     </div>
                   </article>
                 ))}
               </div>
+              {loading && (
+                <div className="catalog-loading" role="status">
+                  Carregando anúncios disponíveis…
+                </div>
+              )}
               {!loading && !visible.length && (
                 <div className="empty">
                   <House size={35} />
                   <h3>
-                    {listings.length
-                      ? "Nenhum imóvel para essa busca."
-                      : "Seu próximo imóvel pode estar chegando."}
+                    {hasFilters
+                      ? "Não encontramos imóveis com esses filtros."
+                      : "Novos imóveis em breve."}
                   </h3>
                   <p>
-                    Fale com Lourival para conhecer oportunidades ou anuncie seu
-                    imóvel.
+                    {hasFilters
+                      ? "Experimente outra cidade, tipo de imóvel ou faixa de preço."
+                      : "Fale com Lourival para consultar oportunidades na região."}
                   </p>
+                  {hasFilters && (
+                    <button
+                      className="outline"
+                      onClick={() => setFilters(emptyFilters)}
+                    >
+                      Ver todos os imóveis
+                    </button>
+                  )}
                   <a
                     className="primary"
                     href={wa}
@@ -660,9 +710,6 @@ function App() {
       )}
     </>
   );
-}
-function ArrowDown() {
-  return <span aria-hidden="true">↓</span>;
 }
 function Auth({ onSuccess }) {
   const [register, setRegister] = useState(false),

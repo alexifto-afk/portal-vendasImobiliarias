@@ -1398,3 +1398,318 @@ footer a:not(.brand) {
     font-size: 22px;
   }
 }
+
+/* Catálogo como primeiro conteúdo da página. */
+.catalog-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 32px 0 22px;
+}
+.catalog-intro h1 {
+  font-size: 34px;
+  font-weight: 650;
+  letter-spacing: -1.5px;
+  margin: 10px 0;
+  line-height: 1.2;
+}
+.catalog-intro p {
+  font-size: 13px;
+  margin: 0;
+  max-width: 640px;
+}
+.catalog-help {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  flex-shrink: 0;
+  color: #6e7e6a;
+}
+.catalog-help strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  margin-top: 5px;
+  color: var(--green);
+}
+.catalog-search {
+  background: #fff;
+  border: 1px solid #dce4d5;
+  border-radius: 10px;
+  padding: 18px 24px 22px;
+  box-shadow: 0 7px 24px #24432c05;
+}
+.purpose-options {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+.purpose-options button {
+  background: #f3f6ef;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 10px 25px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.purpose-options .selected {
+  background: var(--green);
+  color: #fff;
+}
+.catalog-fields {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr auto;
+  gap: 18px;
+  align-items: end;
+}
+.catalog-fields .field {
+  margin: 0;
+  gap: 8px;
+}
+.catalog-fields .field > span {
+  font-size: 12px;
+  color: #4d6352;
+}
+.catalog-fields input,
+.catalog-fields select {
+  font-size: 13px;
+  height: 45px;
+  background: #fafbf8;
+}
+.catalog-fields .input-icon {
+  background: #fafbf8;
+  border: 1px solid #d8dfd7;
+  border-radius: 5px;
+  padding-left: 12px;
+}
+.catalog-fields .input-icon input {
+  border: 0;
+  background: transparent;
+}
+.catalog-fields .primary {
+  height: 45px;
+  padding: 10px 20px;
+}
+.catalog-main .properties {
+  padding-top: 20px;
+  scroll-margin-top: 15px;
+}
+.catalog-categories {
+  margin: 0 0 22px;
+  gap: 10px;
+}
+.catalog-categories button {
+  font-size: 12px;
+  padding: 12px 24px;
+  border-radius: 7px;
+}
+.catalog-results {
+  margin-bottom: 22px;
+  align-items: center;
+}
+.catalog-results h2 {
+  font-size: 23px;
+  margin: 0 0 7px;
+  letter-spacing: -0.7px;
+}
+.results-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.results-actions .text-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.sort-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: #788370;
+}
+.sort-label select {
+  background: #fff;
+  border: 1px solid #dce4d5;
+  border-radius: 5px;
+  padding: 10px;
+  color: #314b3b;
+  font-size: 12px;
+}
+.catalog-main .card-image {
+  height: 225px;
+}
+.catalog-main .image-tag,
+.catalog-main .image-type {
+  font-size: 11px;
+  padding: 8px 11px;
+}
+.catalog-main .card-location {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.catalog-main .card-content h3 {
+  font-size: 17px;
+  min-height: 52px;
+}
+.catalog-main .card-features {
+  font-size: 12px;
+}
+.catalog-main .card-bottom {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.catalog-main .card-bottom strong {
+  font-size: 24px;
+}
+.catalog-main .card-bottom button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #edf3e7;
+  border-radius: 5px;
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.catalog-main .sell-banner {
+  margin-top: 65px;
+}
+.catalog-loading {
+  padding: 40px;
+  text-align: center;
+  color: #6e7e6a;
+  font-size: 14px;
+}
+.catalog-main .empty .outline {
+  margin: 16px 10px 0 0;
+}
+@media (max-width: 1050px) {
+  .catalog-help {
+    display: none;
+  }
+  .catalog-fields {
+    gap: 12px;
+  }
+  .catalog-main .card-bottom strong {
+    font-size: 21px;
+  }
+  .catalog-main .card-bottom button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+@media (max-width: 760px) {
+  .catalog-intro {
+    padding: 20px 0 18px;
+    display: block;
+  }
+  .catalog-intro h1 {
+    font-size: 27px;
+    letter-spacing: -1px;
+    margin: 9px 0;
+  }
+  .catalog-intro p {
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .catalog-search {
+    padding: 14px;
+    border-radius: 8px;
+  }
+  .purpose-options {
+    margin-bottom: 14px;
+    gap: 6px;
+  }
+  .purpose-options button {
+    flex: 1;
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+  .catalog-fields {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .catalog-fields .field:first-child {
+    grid-column: 1/-1;
+  }
+  .catalog-fields .primary {
+    grid-column: 1/-1;
+    width: 100%;
+    height: 43px;
+  }
+  .catalog-fields .field > span {
+    font-size: 11px;
+  }
+  .catalog-fields input,
+  .catalog-fields select {
+    font-size: 12px;
+    height: 42px;
+    padding: 9px;
+  }
+  .catalog-main .properties {
+    padding-top: 16px;
+  }
+  .catalog-categories {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    overflow: visible;
+    gap: 6px;
+    margin: 0 0 20px;
+  }
+  .catalog-categories button {
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 2px;
+    font-size: 11px;
+    white-space: normal;
+  }
+  .catalog-categories button svg {
+    width: 20px;
+    height: 20px;
+  }
+  .catalog-results {
+    align-items: stretch;
+    gap: 12px;
+    flex-direction: column;
+    margin-bottom: 18px;
+  }
+  .catalog-results h2 {
+    font-size: 22px;
+    margin: 0 0 5px;
+  }
+  .results-actions {
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .sort-label {
+    margin-left: auto;
+  }
+  .catalog-main .card-image {
+    height: 230px;
+  }
+  .catalog-main .card-content h3 {
+    min-height: 0;
+    font-size: 17px;
+  }
+  .catalog-main .card-location {
+    font-size: 12px;
+  }
+  .catalog-main .card-bottom strong {
+    font-size: 25px;
+  }
+  .catalog-main .card-bottom button {
+    width: auto;
+    font-size: 12px;
+    padding: 11px 13px;
+  }
+  .catalog-main .sell-banner {
+    margin-top: 40px;
+  }
+}
