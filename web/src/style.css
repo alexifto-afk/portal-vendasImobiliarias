@@ -1839,3 +1839,27 @@ footer a:not(.brand) {
     height: 110px;
   }
 }
+.test-checkout-steps {
+  font-size: 13px;
+  color: #63745f;
+  line-height: 1.9;
+  padding-left: 20px;
+  margin-bottom: 25px;
+}
+.test-order {
+  border-top: 1px solid #dce4d5;
+  margin-top: 25px;
+  padding-top: 20px;
+}
+.test-order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.test-order .field {
+  max-width: 600px;
+}
+.test-order .field input {
+  font-family: monospace;
+  font-size: 13px;
+}

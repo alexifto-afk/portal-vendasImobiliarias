@@ -20,6 +20,7 @@ import "./style.css";
 import { MediaImage, PhotoPicker } from "./media.jsx";
 import { uploadSelectedPhotos } from "./photo-uploads.js";
 import CommercialSettings from "./CommercialSettings.jsx";
+import TestCheckout from "./TestCheckout.jsx";
 import { createListingCheckout } from "./listing-checkout.js";
 import { emptyFilters, findListings, areaLabel } from "./catalog.js";
 const API = (
@@ -1303,6 +1304,7 @@ function Admin({ config, setError, onConfigChange }) {
           ["leads", "Contatos e visitas"],
           ["audit", "Histórico"],
           ["settings", "Configurações"],
+          ["test-checkout", "Teste Mercado Pago"],
         ].map(([v, l]) => (
           <button
             key={v}
@@ -1313,7 +1315,9 @@ function Admin({ config, setError, onConfigChange }) {
           </button>
         ))}
       </div>
-      {tab === "settings" ? (
+      {tab === "test-checkout" ? (
+        <TestCheckout request={api} />
+      ) : tab === "settings" ? (
         <CommercialSettings request={api} onConfigChange={onConfigChange} />
       ) : tab === "listings" ? (
         items.map((l) => (
