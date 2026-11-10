@@ -36,12 +36,12 @@ O teste pode ser criado com as contratações comerciais desativadas e sem comis
 
 ## 4. Pagar com o comprador e cartão de teste
 
-1. Na janela anônima, entre com o usuário e a senha da **conta de comprador de teste**, disponível no Developers da aplicação. Ela deve ser diferente da conta vendedora de teste.
+1. Feche todas as janelas anônimas anteriores. Abra uma nova janela anônima e cole o link copiado do portal. **Não inicie sessão em nenhuma conta do Mercado Pago**, real ou de teste: o fluxo Checkout Pro via Orders permite a compra sem login. Se for solicitado apenas um e-mail, informe um endereço válido; não é necessário usar conta de teste ou domínio específico.
 2. Use o cartão, nome do titular, documento, validade e código de segurança exibidos pelo próprio Developers para simular **pagamento aprovado**.
 3. Não use conta nem cartão reais. Não envie dados de cartões ao portal: o preenchimento acontece no checkout hospedado pelo Mercado Pago.
 4. Conclua o checkout e volte ao painel do administrador na janela original.
 
-Se a conta de teste solicitar código de verificação, siga as instruções e os dados de verificação fornecidos no painel de contas de teste do Mercado Pago. Não crie usuários de teste com dados pessoais reais.
+Se aparecer “Uma das partes com as quais você está tentando efetuar o pagamento é de teste”, pode haver uma sessão de conta real misturada ao checkout de teste. Feche todas as janelas anônimas, abra uma nova, cole o link e prossiga sem login, selecionando cartão com os dados de teste. Se persistir, confira se o link vem da aba Teste Mercado Pago do portal, com Order ID ORDTST, e se MP_TEST_ACCESS_TOKEN foi copiado da aba Teste da mesma aplicação. Não troque para credenciais de produção para tentar resolver. A orientação anterior de entrar com comprador de teste correspondia ao fluxo por Preferences, e foi corrigida para o fluxo por Orders implementado aqui.
 
 ## 5. Obter o ID para a medição
 
@@ -67,3 +67,5 @@ Criar a ordem sem concluir o pagamento não atende ao pedido de compra concluíd
 - [API de criação de order Checkout Pro](https://www.mercadopago.com.br/developers/pt/reference/online-payments/checkout-pro-orders/create-order/post)
 - [Contas de teste e credenciais APP_USR](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/test-accounts)
 - [Status da order](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-orders/payment-management/status/order-status)
+
+- [Compra de teste via Orders sem sessão iniciada](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-orders/integration-test/test-purchase-with-card)
