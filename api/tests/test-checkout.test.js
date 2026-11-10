@@ -171,3 +171,49 @@ test("resposta com ordem real, valor incorreto, vendedor diferente ou URL adulte
   );
   assert.equal(old.readyForMeasurement, false);
 });
+
+test("diagnóstico expõe somente códigos técnicos e não retorna dados do comprador ou cartão", async () => {
+  const { testOrderDiagnostic } = await import("../src/test-checkout.js");
+  const diagnostic = testOrderDiagnostic({
+    status_detail: "waiting_payment",
+    integration_data: { application_id: 123 },
+    payer: { email: "private@example.com" },
+    client_token: "secret",
+    transactions: {
+      payments: [
+        {
+          status: "failed",
+          status_detail: "invalid_users",
+          card: { number: "secret-card" },
+          errors: [
+            { code: "145", description: "private@example.com" },
+            { code: "invalid code with personal data" },
+          ],
+        },
+      ],
+    },
+    errors: [{ code: "invalid_users", message: "secret-token" }],
+  });
+  assert.deepEqual(diagnostic, {
+    statusDetail: "waiting_payment",
+    applicationId: "123",
+    paymentAttempts: [
+      { status: "failed", statusDetail: "invalid_users", errorCodes: ["145"] },
+    ],
+    errorCodes: ["invalid_users"],
+  });
+  const text = JSON.stringify(diagnostic);
+  for (const secret of [
+    "private@example.com",
+    "secret",
+    "secret-card",
+    "secret-token",
+  ])
+    assert.ok(!text.includes(secret));
+  assert.deepEqual(testOrderDiagnostic({}), {
+    statusDetail: null,
+    applicationId: null,
+    paymentAttempts: [],
+    errorCodes: [],
+  });
+});

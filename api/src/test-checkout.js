@@ -4,6 +4,38 @@ const orderPattern = /^ORDTST[A-Z0-9]{10,80}$/;
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const fail = (status, message) => Object.assign(Error(message), { status });
+// Lista explícita de códigos: não retornamos payer, cartão, tokens ou JSON bruto.
+const technicalCode = (value) =>
+  typeof value === "string" && /^[a-zA-Z0-9_.:-]{1,100}$/.test(value)
+    ? value
+    : null;
+export function testOrderDiagnostic(order) {
+  return {
+    statusDetail: technicalCode(order.status_detail),
+    applicationId: /^[0-9]{1,30}$/.test(
+      String(order.integration_data?.application_id || ""),
+    )
+      ? String(order.integration_data.application_id)
+      : null,
+    paymentAttempts: (Array.isArray(order.transactions?.payments)
+      ? order.transactions.payments
+      : []
+    )
+      .slice(0, 20)
+      .map((payment) => ({
+        status: technicalCode(payment.status),
+        statusDetail: technicalCode(payment.status_detail),
+        errorCodes: (Array.isArray(payment.errors) ? payment.errors : [])
+          .slice(0, 10)
+          .map((error) => technicalCode(error.code))
+          .filter(Boolean),
+      })),
+    errorCodes: (Array.isArray(order.errors) ? order.errors : [])
+      .slice(0, 10)
+      .map((error) => technicalCode(error.code))
+      .filter(Boolean),
+  };
+}
 export function safeTestOrder(order, sellerId, reference, expectedId) {
   if (
     !orderPattern.test(order.id) ||
@@ -39,6 +71,7 @@ export function safeTestOrder(order, sellerId, reference, expectedId) {
     order.status === "processed" && Number(order.total_paid_amount) >= 1;
   return {
     orderId: order.id,
+    diagnostic: testOrderDiagnostic(order),
     checkoutUrl: url.href,
     status: String(order.status || "unknown"),
     createdAt: Number.isNaN(createdAt.getTime())
