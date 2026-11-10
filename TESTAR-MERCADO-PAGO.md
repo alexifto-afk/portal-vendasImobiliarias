@@ -67,3 +67,9 @@ Criar a ordem sem concluir o pagamento não atende ao pedido de compra concluíd
 - [API de criação de order Checkout Pro](https://www.mercadopago.com.br/developers/pt/reference/online-payments/checkout-pro-orders/create-order/post)
 - [Contas de teste e credenciais APP_USR](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/test-accounts)
 - [Status da order](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-orders/payment-management/status/order-status)
+
+## Quando o pagamento é recusado na confirmação
+
+Se os dados de teste já foram conferidos e a mensagem persiste, não altere credenciais às cegas. No portal, clique em **Consultar pagamento** da ordem afetada e depois **Copiar diagnóstico**. O painel mostra apenas status, códigos técnicos de tentativas e ID da aplicação, quando fornecidos pela API. Esses dados podem ser compartilhados para investigar o erro, sem tokens ou dados do cartão.
+
+Compare o ID da aplicação com a aplicação aberta no Developers. A consulta pode não retornar tentativa alguma quando o checkout bloqueia o pagamento antes do processamento. Nesse caso, é necessário conferir os registros da mesma aplicação em **Logs/API Requests** no Developers ou abrir um atendimento ao Mercado Pago com Order ID e horário da tentativa. Não envie resposta JSON bruta, cookies, tokens nem detalhes de cartão. A ausência de código não comprova erro de credenciais ou de implementação. O diagnóstico não altera nem reprocessa o pagamento.

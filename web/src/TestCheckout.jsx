@@ -118,6 +118,67 @@ export default function TestCheckout({ request }) {
                 {order.createdAt &&
                   ` · criada em ${new Date(order.createdAt).toLocaleString("pt-BR")}`}
               </p>
+              {order.diagnostic && (
+                <div className="notice">
+                  <strong>Diagnóstico da última consulta</strong>
+                  <p>
+                    Detalhe da ordem:{" "}
+                    {order.diagnostic.statusDetail || "não informado"}.
+                    Aplicação:{" "}
+                    {order.diagnostic.applicationId || "não informada"}.
+                  </p>
+                  {order.diagnostic.paymentAttempts.map((attempt, index) => (
+                    <p key={index}>
+                      Tentativa {index + 1}: {attempt.status || "sem status"} /{" "}
+                      {attempt.statusDetail || "sem detalhe"}
+                      {attempt.errorCodes.length
+                        ? ` · códigos: ${attempt.errorCodes.join(", ")}`
+                        : ""}
+                    </p>
+                  ))}
+                  {!order.diagnostic.paymentAttempts.length && (
+                    <p>
+                      A API não retornou tentativas de pagamento nesta ordem. A
+                      falha pode ter ocorrido antes do processamento; verifique
+                      os logs do checkout no Developers.
+                    </p>
+                  )}
+                  {order.diagnostic.errorCodes.length > 0 && (
+                    <p>
+                      Códigos da ordem: {order.diagnostic.errorCodes.join(", ")}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className="outline small"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          JSON.stringify(
+                            {
+                              orderId: order.orderId,
+                              status: order.status,
+                              createdAt: order.createdAt,
+                              ...order.diagnostic,
+                            },
+                            null,
+                            2,
+                          ),
+                        );
+                        setMessage(
+                          "Diagnóstico copiado. Pode compartilhar esses códigos para análise.",
+                        );
+                      } catch {
+                        setError(
+                          "Não foi possível copiar. Envie uma captura dos códigos mostrados no painel.",
+                        );
+                      }
+                    }}
+                  >
+                    Copiar diagnóstico
+                  </button>
+                </div>
+              )}
               <div className="test-order-actions">
                 <a
                   className="outline small"
