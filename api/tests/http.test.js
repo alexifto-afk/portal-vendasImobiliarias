@@ -33,16 +33,10 @@ before(async () => {
   });
 });
 after(() => child?.kill());
-test("API inicia, mostra preços e bloqueia comercial sem configuração completa", async () => {
-  const r = await fetch(base + "/config");
+test("API inicia com health check sem consultar o banco", async () => {
+  const r = await fetch(base + "/health");
   assert.equal(r.status, 200);
-  const c = await r.json();
-  assert.equal(c.commercialEnabled, false);
-  assert.equal(c.adPrice, 2990);
-  assert.equal(c.featuredPrice, 5990);
-  assert.equal(c.brokerPhone, "5563999915770");
-  assert.ok(c.termsVersion.startsWith("2026-11-v1-"));
-  assert.equal("MP_ACCESS_TOKEN" in c, false);
+  assert.deepEqual(await r.json(), { ok: true });
 });
 test("áreas privadas rejeitam acesso sem sessão antes de consultar o banco", async () => {
   for (const path of [
@@ -50,6 +44,7 @@ test("áreas privadas rejeitam acesso sem sessão antes de consultar o banco", a
     "/admin/listings",
     "/admin/leads",
     "/admin/audit",
+    "/admin/settings",
   ]) {
     const r = await fetch(base + path);
     assert.equal(r.status, 401);

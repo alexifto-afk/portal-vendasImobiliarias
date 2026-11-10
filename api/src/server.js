@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
-import { createHash } from "node:crypto";
+import { registerCommercialRoutes } from "./commercial-settings.js";
+import { registerImageRoutes, uploadId } from "./image-uploads.js";
 import cors from "cors";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
@@ -10,7 +11,6 @@ import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import {
   terms,
-  TERMS_VERSION,
   commission,
   paymentMatches,
   publicFields,
@@ -44,20 +44,6 @@ if (
   !/^55\d{10,11}$/.test(config.brokerPhone)
 )
   throw Error("Configuração comercial inválida.");
-config.commercialEnabled =
-  env.COMMERCIAL_ENABLED === "true" &&
-  Boolean(env.MP_ACCESS_TOKEN && env.MP_COLLECTOR_ID) &&
-  config.saleCommissionBps > 0 &&
-  config.rentCommissionBps > 0 &&
-  config.adPrice > 0 &&
-  config.featuredPrice > 0;
-const termsVersion =
-  TERMS_VERSION +
-  "-" +
-  createHash("sha256")
-    .update(JSON.stringify(config))
-    .digest("hex")
-    .slice(0, 16);
 const webOrigin = env.WEB_ORIGIN || "http://localhost:5173";
 if (env.NODE_ENV === "production" && !webOrigin.startsWith("https://"))
   throw Error("WEB_ORIGIN deve usar HTTPS.");
@@ -141,13 +127,16 @@ async function mp(path, options = {}) {
   return response.json();
 }
 app.get("/api/health", (_q, r) => r.json({ ok: true }));
-app.get("/api/config", (_q, r) =>
-  r.json({
-    ...config,
-    termsVersion,
-    terms: { SALE: terms(config, "SALE"), RENT: terms(config, "RENT") },
-  }),
-);
+const getCommercial = registerCommercialRoutes(app, {
+  db,
+  auth,
+  admin,
+  wrap,
+  base: config,
+  env,
+  audit,
+});
+registerImageRoutes(app, { db, auth, wrap });
 app.post(
   "/api/auth/register",
   authLimit,
@@ -237,11 +226,6 @@ app.get(
   }),
 );
 const phone = z.string().regex(/^\d{10,13}$/, "Informe o telefone com DDD.");
-const httpsImage = z
-  .string()
-  .url()
-  .max(2000)
-  .refine((s) => s.startsWith("https://"), "A imagem deve usar HTTPS.");
 const listingSchema = z.object({
   title: z.string().trim().min(8).max(100),
   description: z.string().trim().min(30).max(5000),
@@ -255,23 +239,50 @@ const listingSchema = z.object({
   price: z.number().int().positive().max(2000000000),
   area: z.number().positive().max(1e10),
   bedrooms: z.number().int().min(0).max(100),
-  images: z.array(httpsImage).min(1).max(12),
+  images: z
+    .array(
+      z
+        .string()
+        .refine(
+          (v) => Boolean(uploadId(v)),
+          "Envie as fotos pelo seletor de arquivos.",
+        ),
+    )
+    .min(1)
+    .max(12),
   termsAccepted: z.literal(true),
-  termsVersion: z.literal(termsVersion),
+  termsVersion: z.string(),
 });
 app.post(
   "/api/owner/listings",
   auth,
   wrap(async (q, r) => {
+    const { config, termsVersion: currentTermsVersion } = await getCommercial();
     if (!config.commercialEnabled)
       throw fail(
         503,
         "Contratações ainda não estão habilitadas. Fale com o corretor.",
       );
     const { termsAccepted, termsVersion, ...d } = listingSchema.parse(q.body);
+    if (termsVersion !== currentTermsVersion)
+      throw fail(
+        409,
+        "As condições comerciais mudaram. Atualize a página, confira os valores e aceite novamente.",
+      );
     const adPrice =
       d.plan === "FEATURED" ? config.featuredPrice : config.adPrice;
     const l = await db.$transaction(async (tx) => {
+      const ids = d.images.map(uploadId);
+      if (new Set(ids).size !== ids.length)
+        throw fail(400, "Remova fotos repetidas.");
+      const ownedPhotos = await tx.imageUpload.count({
+        where: { id: { in: ids }, ownerId: q.user.id, listingId: null },
+      });
+      if (ownedPhotos !== ids.length)
+        throw fail(
+          400,
+          "Uma das fotos não está disponível. Envie suas fotos novamente.",
+        );
       const l = await tx.listing.create({
         data: {
           ...d,
@@ -287,6 +298,12 @@ app.post(
           acceptedAt: new Date(),
         },
       });
+      const linked = await tx.imageUpload.updateMany({
+        where: { id: { in: ids }, ownerId: q.user.id, listingId: null },
+        data: { listingId: l.id },
+      });
+      if (linked.count !== ids.length)
+        throw fail(409, "As fotos já foram utilizadas. Atualize a página.");
       await audit(tx, q.user.id, "TERMS_ACCEPTED", l.id, termsVersion);
       return l;
     });
@@ -309,7 +326,8 @@ app.post(
   "/api/owner/listings/:id/checkout",
   auth,
   wrap(async (q, r) => {
-    if (!config.commercialEnabled) throw fail(503, "Pagamentos desativados.");
+    if (!(await getCommercial()).config.commercialEnabled)
+      throw fail(503, "Pagamentos desativados.");
     const l = await owned(q);
     if (l.paidAt || l.status === "CANCELLED")
       throw fail(409, "Anúncio já pago ou cancelado.");
@@ -349,7 +367,8 @@ app.post(
   "/api/owner/listings/:id/sync-payment",
   auth,
   wrap(async (q, r) => {
-    if (!config.commercialEnabled) throw fail(503, "Pagamentos desativados.");
+    if (!(await getCommercial()).config.commercialEnabled)
+      throw fail(503, "Pagamentos desativados.");
     const l = await owned(q);
     if (l.paidAt) return r.json({ paid: true });
     const result = await mp(
@@ -562,13 +581,11 @@ app.get(
 );
 app.use((err, q, r, _next) => {
   if (err instanceof z.ZodError)
-    return r
-      .status(400)
-      .json({
-        error: err.issues
-          .map((x) => `${x.path.join(".")}: ${x.message}`)
-          .join("; "),
-      });
+    return r.status(400).json({
+      error: err.issues
+        .map((x) => `${x.path.join(".")}: ${x.message}`)
+        .join("; "),
+    });
   if (err.code === "P2002")
     return r.status(409).json({ error: "Registro já existente." });
   if (err.code === "P2025")

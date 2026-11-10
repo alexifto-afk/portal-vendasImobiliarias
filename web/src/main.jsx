@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowUpRight,
@@ -17,6 +17,9 @@ import {
   Building2,
 } from "lucide-react";
 import "./style.css";
+import { MediaImage, PhotoPicker } from "./media.jsx";
+import { uploadSelectedPhotos } from "./photo-uploads.js";
+import CommercialSettings from "./CommercialSettings.jsx";
 import { createListingCheckout } from "./listing-checkout.js";
 import { emptyFilters, findListings, areaLabel } from "./catalog.js";
 const API = (
@@ -94,10 +97,19 @@ async function api(path, options = {}) {
     r = await fetch(API + path, {
       ...options,
       headers: {
-        "Content-Type": "application/json",
+        ...(options.body instanceof FormData
+          ? {}
+          : { "Content-Type": "application/json" }),
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
-      ...(options.body ? { body: JSON.stringify(options.body) } : {}),
+      ...(options.body
+        ? {
+            body:
+              options.body instanceof FormData
+                ? options.body
+                : JSON.stringify(options.body),
+          }
+        : {}),
     });
   } catch {
     throw Error(
@@ -109,6 +121,9 @@ async function api(path, options = {}) {
     .catch(() => ({ error: "Resposta inválida do servidor." }));
   if (!r.ok) throw Error(d.error || "Não foi possível concluir.");
   return d;
+}
+function Photo(props) {
+  return <MediaImage {...props} apiBase={API} token={accessToken} />;
 }
 function Field({ label, children, ...props }) {
   return (
@@ -431,7 +446,7 @@ function App() {
                         setModal("property");
                       }}
                     >
-                      <img
+                      <Photo
                         src={l.images[0]}
                         alt={l.title}
                         loading={visible.indexOf(l) < 3 ? "eager" : "lazy"}
@@ -609,7 +624,7 @@ function App() {
       ) : view === "owner" ? (
         <Owner config={config} setError={setError} />
       ) : (
-        <Admin config={config} setError={setError} />
+        <Admin config={config} setError={setError} onConfigChange={setConfig} />
       )}
       <footer>
         <a className="brand" href="#" onClick={() => go("home")}>
@@ -800,7 +815,7 @@ function Property({ listing: l, demo, config }) {
     [url, setUrl] = useState("");
   return (
     <>
-      <img className="detail-cover" src={l.images[0]} alt={l.title} />
+      <Photo className="detail-cover" src={l.images[0]} alt={l.title} />
       <div className="kicker">
         {typeNames[l.type]} · {l.purpose === "RENT" ? "PARA ALUGAR" : "À VENDA"}
       </div>
@@ -822,7 +837,7 @@ function Property({ listing: l, demo, config }) {
       {l.images.length > 1 && (
         <div className="gallery">
           {l.images.slice(1).map((src) => (
-            <img key={src} src={src} alt="Outro ângulo do imóvel" />
+            <Photo key={src} src={src} alt="Outro ângulo do imóvel" />
           ))}
         </div>
       )}
@@ -889,11 +904,20 @@ function Property({ listing: l, demo, config }) {
 }
 function Owner({ config, setError }) {
   const [items, setItems] = useState([]),
+    [photos, setPhotos] = useState([]),
     [show, setShow] = useState(false),
     [busy, setBusy] = useState(false),
     [feedback, setFeedback] = useState(""),
     [purpose, setPurpose] = useState("SALE"),
     [plan, setPlan] = useState("BASIC");
+  const photoRef = useRef(photos);
+  photoRef.current = photos;
+  useEffect(
+    () => () => {
+      for (const photo of photoRef.current) URL.revokeObjectURL(photo.preview);
+    },
+    [],
+  );
   const load = () =>
     api("/owner/listings")
       .then(setItems)
@@ -962,6 +986,16 @@ function Owner({ config, setError }) {
             }
             try {
               const f = Object.fromEntries(new FormData(e.currentTarget));
+              const images = await uploadSelectedPhotos(
+                photos,
+                api,
+                (key, uploaded) =>
+                  setPhotos((previous) =>
+                    previous.map((photo) =>
+                      photo.key === key ? { ...photo, ...uploaded } : photo,
+                    ),
+                  ),
+              );
               const result = await createListingCheckout(
                 api,
                 {
@@ -972,16 +1006,15 @@ function Owner({ config, setError }) {
                   area: Number(f.area),
                   bedrooms: Number(f.bedrooms),
                   ownerPhone: f.ownerPhone.replace(/\D/g, ""),
-                  images: f.images
-                    .split("\n")
-                    .map((x) => x.trim())
-                    .filter(Boolean),
+                  images,
                   termsAccepted: f.termsAccepted === "on",
                   termsVersion: config.termsVersion,
                 },
                 (listing) => {
                   setItems((previous) => [listing, ...previous]);
                   setShow(false);
+                  photos.forEach((photo) => URL.revokeObjectURL(photo.preview));
+                  setPhotos([]);
                 },
               );
               if (result.url) window.location.assign(result.url);
@@ -1072,18 +1105,12 @@ function Owner({ config, setError }) {
               rows={4}
             />
           </Field>
-          <Field label="Fotos: uma URL HTTPS por linha (até 12)">
-            <textarea
-              name="images"
-              rows={3}
-              required
-              placeholder="https://..."
-            />
-          </Field>
-          <p className="muted">
-            Nesta primeira versão, use imagens já hospedadas e autorizadas por
-            você.
-          </p>
+          <PhotoPicker
+            photos={photos}
+            setPhotos={setPhotos}
+            disabled={busy}
+            request={api}
+          />
           <div className="plan-options">
             {[
               ["BASIC", "Divulgação", config.adPrice],
@@ -1174,7 +1201,7 @@ function Owner({ config, setError }) {
       <div className="owner-list">
         {items.map((l) => (
           <article className="manage-card" key={l.id}>
-            <img src={l.images[0]} alt="" />
+            <Photo src={l.images[0]} alt="" />
             <div>
               <h3>{l.title}</h3>
               <p>
@@ -1220,7 +1247,7 @@ function Owner({ config, setError }) {
     </main>
   );
 }
-function Admin({ config, setError }) {
+function Admin({ config, setError, onConfigChange }) {
   const [items, setItems] = useState([]),
     [leads, setLeads] = useState([]),
     [logs, setLogs] = useState([]),
@@ -1275,6 +1302,7 @@ function Admin({ config, setError }) {
           ["listings", "Anúncios"],
           ["leads", "Contatos e visitas"],
           ["audit", "Histórico"],
+          ["settings", "Configurações"],
         ].map(([v, l]) => (
           <button
             key={v}
@@ -1285,7 +1313,9 @@ function Admin({ config, setError }) {
           </button>
         ))}
       </div>
-      {tab === "listings" ? (
+      {tab === "settings" ? (
+        <CommercialSettings request={api} onConfigChange={onConfigChange} />
+      ) : tab === "listings" ? (
         items.map((l) => (
           <article className="form-panel" key={l.id}>
             <div className="section-heading">
@@ -1364,9 +1394,9 @@ function Admin({ config, setError }) {
               <p className="description">{l.description}</p>
               <div className="gallery">
                 {l.images.map((src) => (
-                  <a key={src} href={src} target="_blank" rel="noreferrer">
-                    <img src={src} alt="Imagem para revisão" />
-                  </a>
+                  <div key={src}>
+                    <Photo src={src} alt="Imagem para revisão" />
+                  </div>
                 ))}
               </div>
               <p>
