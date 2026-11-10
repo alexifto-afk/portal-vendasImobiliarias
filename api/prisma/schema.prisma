@@ -12,6 +12,7 @@ model User {
   passwordHash String
   role String @default("OWNER")
   listings Listing[]
+  uploads ImageUpload[]
   createdAt DateTime @default(now())
 }
 model Listing {
@@ -30,6 +31,7 @@ model Listing {
   area Float
   bedrooms Int @default(0)
   images String[]
+  uploads ImageUpload[]
   status String @default("PENDING")
   reviewed Boolean @default(false)
   paidAt DateTime?
@@ -80,4 +82,24 @@ model Audit {
   entityId String
   detail String
   createdAt DateTime @default(now())
+}
+
+model ImageUpload {
+  id String @id
+  ownerId String
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  listingId String?
+  listing Listing? @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  data Bytes
+  mimeType String
+  createdAt DateTime @default(now())
+  @@index([ownerId, listingId])
+}
+
+model CommercialSettings {
+  id String @id @default("main")
+  saleCommissionBps Int
+  rentCommissionBps Int
+  enabled Boolean @default(false)
+  updatedAt DateTime @updatedAt
 }

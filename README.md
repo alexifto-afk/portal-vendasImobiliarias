@@ -24,7 +24,7 @@ Destaque aparece antes dos anúncios básicos. O prazo começa na primeira aprov
 
 - Catálogo público, filtros por finalidade, tipo e cidade, detalhes e galeria.
 - Cadastro/login com senha protegida por bcrypt; administradores criados exclusivamente por seed.
-- Cadastro de anúncio com dados privados, fotos via URL HTTPS, plano e aceite das condições.
+- Cadastro de anúncio com dados privados, upload de fotos JPG, PNG ou WebP, plano e aceite das condições.
 - Checkout Pro do Mercado Pago; o backend consulta pagamentos aprovados, validando modo real, valor, moeda, destinatário e referência. Retorno de navegador não confirma pagamento.
 - Aprovação pelo corretor somente após confirmação do pagamento. Anúncios vencidos deixam de aparecer.
 - Contato público exclusivamente de Lourival; nome e telefone do proprietário e endereço completo são omitidos da resposta pública.
@@ -90,7 +90,7 @@ Configure:
 
 Migrations e seed são executados uma vez de forma controlada, localmente contra o Neon ou por shell com acesso ao banco. **Não rode o seed a cada deploy.** Configure nome, e-mail e senha do administrador, execute `npm run seed` e remova `ADMIN_PASSWORD` do ambiente quando concluir. O seed não substitui credenciais existentes.
 
-O serviço gratuito pode suspender por inatividade; o primeiro acesso pode demorar. Para disponibilidade comercial constante, avalie um serviço adequado. Não há arquivos armazenados no disco do Render: imagens são URLs externas.
+O serviço gratuito pode suspender por inatividade; o primeiro acesso pode demorar. Para disponibilidade comercial constante, avalie um serviço adequado. As novas fotos são armazenadas no PostgreSQL Neon, sem depender do disco do Render. O armazenamento consome a cota do banco. Anúncios antigos com URLs externas continuam funcionando.
 
 ### 4. Vercel
 
@@ -123,7 +123,7 @@ Configure `VITE_API_URL=https://SUA-API.onrender.com/api` e faça deploy. Coloqu
 - O resumo de negociação **não é um contrato de compra e venda/locação completo**, não assina documentos e não substitui análise da matrícula, titularidade, escritura ou registro quando aplicáveis.
 - O recebimento de comissão é manual. Não há repasse/split automático para o corretor.
 - Reembolsos e chargebacks devem ser acompanhados no Mercado Pago; não há reconciliação automática após o pagamento inicial. Retire o anúncio manualmente quando necessário. Uma tentativa paga duplicada não gera novo prazo; confira e devolva duplicidades pelo PSP.
-- Não há upload de fotos, recuperação de senha, edição/renovação pelo anunciante, notificações automáticas nem assinatura digital. Fotos devem estar hospedadas em serviço autorizado e podem expor metadados: revise antes de publicar.
+- Não há recuperação de senha, edição/renovação pelo anunciante, notificações automáticas nem assinatura digital. As fotos enviadas são validadas, reduzidas e convertidas para WebP, sem os metadados originais.
 - O catálogo retorna até 100 anúncios, o painel até 500 registros e o histórico até 200 eventos recentes. Totais no painel correspondem a essa janela. Paginação e relatórios completos são evolução necessária com aumento de volume.
 - Rate limit é em memória, adequado a instância única; para múltiplas instâncias use armazenamento compartilhado. JWT fica em sessionStorage e expira em 8h; logout remove a sessão do navegador.
 - Imagens de exemplo são externas do Unsplash; fontes do Google Fonts. O catálogo de exemplo só aparece quando a API está indisponível e é identificado. APIs funcionais exigem Neon configurado.
@@ -139,3 +139,7 @@ npm run build
 ```
 
 Há testes de cálculo, critérios de confirmação financeira, expiração/publicação, projeção pública, autenticação e configuração HTTP. Eles não substituem homologação de checkout, migrations e fluxos com um banco Neon real. Não incluem teste de navegador.
+
+## Upload de fotos e configuração pelo administrador
+
+Veja [ATUALIZAR-FOTOS.md](ATUALIZAR-FOTOS.md) para aplicar esta atualização e configurar comissões e credenciais de pagamento. O comando `npm start` da API aplica as migrações pendentes antes de iniciar o servidor. Use `npm ci --include=dev && npm run generate` no build do Render para manter o CLI Prisma disponível.
