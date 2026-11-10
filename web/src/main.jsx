@@ -17,6 +17,7 @@ import {
   Building2,
 } from "lucide-react";
 import "./style.css";
+import { createListingCheckout } from "./listing-checkout.js";
 import { emptyFilters, findListings, areaLabel } from "./catalog.js";
 const API = (
   import.meta.env.VITE_API_URL || "http://localhost:3002/api"
@@ -890,6 +891,7 @@ function Owner({ config, setError }) {
   const [items, setItems] = useState([]),
     [show, setShow] = useState(false),
     [busy, setBusy] = useState(false),
+    [feedback, setFeedback] = useState(""),
     [purpose, setPurpose] = useState("SALE"),
     [plan, setPlan] = useState("BASIC");
   const load = () =>
@@ -901,6 +903,7 @@ function Owner({ config, setError }) {
   }, []);
   async function action(l, checkout) {
     setBusy(true);
+    setFeedback("");
     try {
       const d = await api(
         `/owner/listings/${l.id}/${checkout ? "checkout" : "sync-payment"}`,
@@ -915,7 +918,7 @@ function Owner({ config, setError }) {
           );
       }
     } catch (e) {
-      setError(e.message);
+      setFeedback(e.message);
     } finally {
       setBusy(false);
     }
@@ -938,17 +941,30 @@ function Owner({ config, setError }) {
           desativadas até a configuração comercial.
         </div>
       )}
+      {feedback && !show && (
+        <div className="notice error" role="alert">
+          {feedback}
+        </div>
+      )}
       {show && (
         <form
           className="form-panel"
           onSubmit={async (e) => {
             e.preventDefault();
             setBusy(true);
+            setFeedback("");
+            if (!config.commercialEnabled) {
+              setFeedback(
+                "A contratação está temporariamente indisponível. Fale com Lourival para anunciar.",
+              );
+              setBusy(false);
+              return;
+            }
             try {
               const f = Object.fromEntries(new FormData(e.currentTarget));
-              await api("/owner/listings", {
-                method: "POST",
-                body: {
+              const result = await createListingCheckout(
+                api,
+                {
                   ...f,
                   purpose,
                   plan,
@@ -963,11 +979,15 @@ function Owner({ config, setError }) {
                   termsAccepted: f.termsAccepted === "on",
                   termsVersion: config.termsVersion,
                 },
-              });
-              setShow(false);
-              await load();
+                (listing) => {
+                  setItems((previous) => [listing, ...previous]);
+                  setShow(false);
+                },
+              );
+              if (result.url) window.location.assign(result.url);
+              else setFeedback(result.error);
             } catch (err) {
-              setError(err.message);
+              setFeedback(err.message);
             } finally {
               setBusy(false);
             }
@@ -1116,11 +1136,37 @@ function Owner({ config, setError }) {
             Li e aceito as condições e autorizo a intermediação e o uso das
             imagens.
           </label>
+          {!config.commercialEnabled && (
+            <div className="notice" id="checkout-unavailable" role="status">
+              O pagamento de anúncios ainda não foi habilitado. O cadastro
+              ficará disponível após a configuração comercial.{" "}
+              <a
+                className="text-button"
+                href={`https://wa.me/${config.brokerPhone}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Falar com Lourival <ArrowUpRight size={14} />
+              </a>
+            </div>
+          )}
+          {feedback && (
+            <div className="notice error" role="alert">
+              {feedback}
+            </div>
+          )}
           <button
             className="primary"
+            aria-describedby={
+              !config.commercialEnabled ? "checkout-unavailable" : undefined
+            }
             disabled={busy || !config.commercialEnabled}
           >
-            {busy ? "Salvando…" : "Cadastrar e seguir para pagamento"}
+            {busy
+              ? "Preparando pagamento…"
+              : !config.commercialEnabled
+                ? "Contratação temporariamente indisponível"
+                : "Cadastrar e seguir para pagamento"}
             <ArrowRight size={17} />
           </button>
         </form>
@@ -1147,7 +1193,7 @@ function Owner({ config, setError }) {
               <div className="action-stack">
                 <button
                   className="primary small"
-                  disabled={busy}
+                  disabled={busy || !config.commercialEnabled}
                   onClick={() => action(l, true)}
                 >
                   Pagar anúncio
