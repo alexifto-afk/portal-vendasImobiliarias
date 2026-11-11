@@ -332,6 +332,11 @@ app.post(
       select: { email: true, createdAt: true },
     });
     if (!owner) throw fail(404, "Proprietário não encontrado.");
+    const previousPurchase = await db.listing.findFirst({
+      where: { ownerId: l.ownerId, paidAt: { not: null } },
+      orderBy: { paidAt: "desc" },
+      select: { paidAt: true },
+    });
     const pref = await mp("/checkout/preferences", {
       method: "POST",
       body: JSON.stringify(
@@ -341,6 +346,7 @@ app.post(
           payer,
           webOrigin,
           env.MP_STATEMENT_DESCRIPTOR,
+          { lastPaidAt: previousPurchase?.paidAt || null },
         ),
       ),
     });

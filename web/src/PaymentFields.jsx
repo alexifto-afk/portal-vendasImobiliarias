@@ -3,16 +3,18 @@ export function readPaymentDetails(form) {
   return {
     firstName: String(form.get("billingFirstName") || "").trim(),
     lastName: String(form.get("billingLastName") || "").trim(),
+    phone: String(form.get("billingPhone") || "").trim(),
     cpf: String(form.get("billingCpf") || "").replace(/\D/g, ""),
   };
 }
 export default function PaymentFields() {
   return (
     <fieldset className="form-panel payment-fields">
-      <legend>Dados de quem vai pagar o anúncio</legend>
+      <legend>Dados do anunciante para pagamento</legend>
       <p>
-        Informe os dados reais do pagador. Eles serão enviados ao Mercado Pago
-        para o pagamento e não aparecerão no anúncio público.
+        Informe os dados reais do titular da conta anunciante. Eles serão
+        enviados ao Mercado Pago para o pagamento e não aparecerão no anúncio
+        público.
       </p>
       <div className="form-grid">
         <label className="field">
@@ -36,6 +38,17 @@ export default function PaymentFields() {
           />
         </label>
       </div>
+      <label className="field">
+        <span>Telefone do pagador com DDD</span>
+        <input
+          name="billingPhone"
+          type="tel"
+          autoComplete="billing tel"
+          maxLength={20}
+          placeholder="(63) 99999-9999"
+          required
+        />
+      </label>
       <label className="field">
         <span>CPF do pagador</span>
         <input

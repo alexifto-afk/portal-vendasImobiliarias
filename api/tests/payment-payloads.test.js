@@ -119,3 +119,82 @@ test("Orders inclui retorno HTTPS, identificação de fatura e 3DS obrigatório"
     /MP_STATEMENT_DESCRIPTOR/,
   );
 });
+
+test("telefone aceita DDD e código 55 sem confundir DDD 55 com país", () => {
+  const p = payerSchema.parse({
+    firstName: "Ana",
+    lastName: "Silva",
+    cpf: "12345678909",
+    phone: "+55 (63) 99999-9999",
+  });
+  assert.deepEqual(p.phone, { area_code: "63", number: "999999999" });
+  assert.deepEqual(
+    payerSchema.parse({
+      firstName: "Ana",
+      lastName: "Silva",
+      cpf: "12345678909",
+      phone: "(55) 99999-9999",
+    }).phone,
+    { area_code: "55", number: "999999999" },
+  );
+  assert.throws(() =>
+    payerSchema.parse({
+      firstName: "Ana",
+      lastName: "Silva",
+      cpf: "12345678909",
+      phone: "123",
+    }),
+  );
+});
+test("histórico usa somente pagamentos confirmados informados pelo servidor e omite datas inexistentes", () => {
+  const l = {
+      id: "ad",
+      title: "Casa",
+      durationDays: 30,
+      adPrice: 2990,
+      plan: "BASIC",
+    },
+    u = { email: "user@example.com", createdAt: new Date("2026-01-01") },
+    p = {
+      firstName: "Ana",
+      lastName: "Silva",
+      cpf: "12345678909",
+      phone: { area_code: "63", number: "999999999" },
+    };
+  const first = preferencePayload(
+    l,
+    u,
+    p,
+    "https://portal.example",
+    undefined,
+    { lastPaidAt: null },
+  );
+  assert.equal(first.payer.is_first_purchase_online, true);
+  assert.equal("last_purchase" in first.payer, false);
+  assert.equal(first.payer.authentication_type, "PASSWORD");
+  assert.deepEqual(first.payer.phone, p.phone);
+  const repeat = preferencePayload(
+    l,
+    u,
+    p,
+    "https://portal.example",
+    undefined,
+    { lastPaidAt: new Date("2026-02-01") },
+  );
+  assert.equal(repeat.payer.is_first_purchase_online, false);
+  assert.equal(repeat.payer.last_purchase, "2026-02-01T00:00:00.000Z");
+  const unknown = preferencePayload(l, u, p, "https://portal.example");
+  assert.equal("is_first_purchase_online" in unknown.payer, false);
+});
+test("ordem de homologação traz código de produto e perfil de comprador repetido explicitamente sintético", () => {
+  const body = testOrderPayload("opaque-reference", "10.00");
+  assert.equal(body.items[0].external_code, "PORTAL-TEST-ADVERTISEMENT");
+  assert.deepEqual(body.payer.phone, { area_code: "11", number: "999999999" });
+  assert.equal(body.additional_info["payer.authentication_type"], "PASSWORD");
+  assert.equal(body.additional_info["payer.is_first_purchase_online"], false);
+  assert.ok(
+    Date.parse(body.additional_info["payer.last_purchase"]) >
+      Date.parse(body.additional_info["payer.registration_date"]),
+  );
+  assert.equal(body.external_reference, "opaque-reference");
+});
