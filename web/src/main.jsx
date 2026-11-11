@@ -760,10 +760,11 @@ function App() {
                 <p>
                   Nome, CPF, celular e endereço do cadastro são utilizados para
                   administrar sua conta, a contratação e o atendimento. Os dados
-                  do imóvel são utilizados na divulgação. Nome e telefone de interessados são
-                  utilizados por Lourival para atender à solicitação de contato
-                  e registrar visitas e propostas. Dados do proprietário e
-                  endereço completo não aparecem na consulta pública da API.
+                  do imóvel são utilizados na divulgação. Nome e telefone de
+                  interessados são utilizados por Lourival para atender à
+                  solicitação de contato e registrar visitas e propostas. Dados
+                  do proprietário e endereço completo não aparecem na consulta
+                  pública da API.
                 </p>
                 <p>
                   O preço do anúncio remunera a divulgação pelo prazo contratado
