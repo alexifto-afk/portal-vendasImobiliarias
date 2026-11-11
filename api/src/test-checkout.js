@@ -1,5 +1,7 @@
 import { rateLimit } from "express-rate-limit";
 const ACTION = "MP_TEST_ORDER_CREATED";
+const TEST_AMOUNT = "10.00";
+const TEST_BUYER_EMAIL = "buyer@email.com";
 const orderPattern = /^ORDTST[A-Z0-9]{10,80}$/;
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -36,14 +38,20 @@ export function testOrderDiagnostic(order) {
       .filter(Boolean),
   };
 }
-export function safeTestOrder(order, sellerId, reference, expectedId) {
+export function safeTestOrder(
+  order,
+  sellerId,
+  reference,
+  expectedId,
+  expectedAmount = TEST_AMOUNT,
+) {
   if (
     !orderPattern.test(order.id) ||
     (expectedId && order.id !== expectedId) ||
     String(order.user_id) !== String(sellerId) ||
     order.external_reference !== reference ||
     order.currency !== "BRL" ||
-    order.total_amount !== "1.00" ||
+    order.total_amount !== expectedAmount ||
     order.type !== "online" ||
     order.processing_mode !== "manual" ||
     order.live_mode === true
@@ -68,9 +76,11 @@ export function safeTestOrder(order, sellerId, reference, expectedId) {
   const createdAt = new Date(order.created_date),
     age = Date.now() - createdAt.getTime();
   const approved =
-    order.status === "processed" && Number(order.total_paid_amount) >= 1;
+    order.status === "processed" &&
+    Number(order.total_paid_amount) >= Number(expectedAmount);
   return {
     orderId: order.id,
+    amount: expectedAmount,
     diagnostic: testOrderDiagnostic(order),
     checkoutUrl: url.href,
     status: String(order.status || "unknown"),
@@ -187,17 +197,16 @@ export function registerTestCheckoutRoutes(
         body: JSON.stringify({
           type: "online",
           processing_mode: "manual",
-          total_amount: "1.00",
+          total_amount: TEST_AMOUNT,
+          payer: { email: TEST_BUYER_EMAIL },
           external_reference: reference,
-          description: "Simulação de integração do portal — sem anúncio",
           items: [
             {
               title: "Compra de teste do portal",
-              unit_price: "1.00",
+              unit_price: TEST_AMOUNT,
               quantity: 1,
             },
           ],
-          expiration_time: "P1D",
         }),
       });
       const order = safeTestOrder(raw, sellerId, reference);
@@ -242,6 +251,7 @@ export function registerTestCheckoutRoutes(
         sellerId,
         saved.reference,
         q.params.id,
+        saved.order.amount || "1.00",
       );
       r.json(order);
     }),

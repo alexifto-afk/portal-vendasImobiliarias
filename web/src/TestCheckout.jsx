@@ -69,7 +69,7 @@ export default function TestCheckout({ request }) {
       </div>
       <h2>Compra de teste do Mercado Pago</h2>
       <p>
-        Gere uma ordem de R$ 1,00 para simular o pagamento e obter o Order ID
+        Gere uma ordem de R$ 10,00 para simular o pagamento e obter o Order ID
         solicitado pelo Developers. Este fluxo não publica imóveis nem registra
         receita no portal.
       </p>
@@ -86,8 +86,8 @@ export default function TestCheckout({ request }) {
             <li>Crie a compra de teste pelo botão abaixo.</li>
             <li>Copie o link do checkout e abra em uma janela anônima.</li>
             <li>
-              Entre com a conta de comprador de teste e use o cartão e os dados
-              de teste exibidos no Developers.
+              Continue no checkout sem fazer login no Mercado Pago. Use o cartão
+              e os dados de teste exibidos no Developers.
             </li>
             <li>Volte aqui e clique em Consultar pagamento.</li>
             <li>
@@ -104,7 +104,13 @@ export default function TestCheckout({ request }) {
           </button>
           {data.orders.map((order) => (
             <article className="test-order" key={order.orderId}>
-              <h3>Ordem de teste · R$ 1,00</h3>
+              <h3>
+                Ordem de teste ·{" "}
+                {Number(order.amount || "1.00").toLocaleString("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+              </h3>
               <label className="field">
                 <span>Order ID</span>
                 <input
