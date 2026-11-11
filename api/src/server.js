@@ -1,3 +1,4 @@
+import { registerCustomerRoutes } from "./customers.js";
 import { requireAdvertiser } from "./access.js";
 import {
   registrationSchema,
@@ -148,6 +149,7 @@ const getCommercial = registerCommercialRoutes(app, {
   audit,
 });
 registerPartnerRoutes(app, { db, auth, admin, wrap, getCommercial, audit });
+registerCustomerRoutes(app, { db, auth, admin, wrap, audit });
 registerImageRoutes(app, { db, auth, wrap, requireAdvertiser });
 registerTestCheckoutRoutes(app, { db, auth, admin, wrap, env });
 registerWebhookRoutes(app, { db, wrap, env, auth, admin });

@@ -1,3 +1,4 @@
+import Customers from "./Customers.jsx";
 import { dashboardFor } from "./partner-access.js";
 import Tabs from "./Tabs.jsx";
 import Profile, { IdentityFields } from "./Profile.jsx";
@@ -1499,6 +1500,7 @@ function Admin({ config, setError, onConfigChange, userName }) {
         onChange={setTab}
         tabs={[
           ["listings", "Anúncios"],
+          ["customers", "Clientes cadastrados"],
           ["leads", "Contatos e visitas"],
           ["audit", "Histórico"],
           ["settings", "Configurações"],
@@ -1512,7 +1514,9 @@ function Admin({ config, setError, onConfigChange, userName }) {
         aria-labelledby={`admin-tab-${tab}`}
         tabIndex={0}
       >
-        {tab === "partners" ? (
+        {tab === "customers" ? (
+          <Customers request={api} onOpenPartners={() => setTab("partners")} />
+        ) : tab === "partners" ? (
           <AdminPartners request={api} />
         ) : tab === "test-checkout" ? (
           <TestCheckout request={api} />

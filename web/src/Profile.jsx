@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-export function IdentityFields({ values = {} }) {
+export function IdentityFields({ values = {}, requireComplete = true }) {
   return (
     <>
       <label className="field">
@@ -23,7 +23,7 @@ export function IdentityFields({ values = {} }) {
             defaultValue={values.cpf || ""}
             maxLength={14}
             placeholder="000.000.000-00"
-            required
+            required={requireComplete}
           />
         </label>
         <label className="field">
@@ -35,7 +35,7 @@ export function IdentityFields({ values = {} }) {
             defaultValue={values.phone || ""}
             maxLength={24}
             placeholder="(63) 99999-9999"
-            required
+            required={requireComplete}
           />
         </label>
       </div>
@@ -49,7 +49,7 @@ export function IdentityFields({ values = {} }) {
           maxLength={300}
           rows={3}
           placeholder="Rua, número, complemento, bairro, cidade, UF e CEP"
-          required
+          required={requireComplete}
         />
       </label>
     </>

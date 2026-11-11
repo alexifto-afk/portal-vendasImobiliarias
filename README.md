@@ -171,3 +171,7 @@ Veja [NAVEGACAO-E-PERFIL.md](NAVEGACAO-E-PERFIL.md) para as abas e tabelas de pa
 ## Login e senha do parceiro
 
 Em Novo parceiro, o administrador pode criar a conta e a parceria com nível Parceiro no mesmo formulário. Veja [ACESSO-DO-PARCEIRO.md](ACESSO-DO-PARCEIRO.md) para os dados de acesso, as permissões e a alternativa de vincular uma conta existente.
+
+## Clientes cadastrados
+
+Veja [CLIENTES-CADASTRADOS.md](CLIENTES-CADASTRADOS.md) para pesquisar usuários no painel administrativo, editar e detalhar cadastros, excluir contas sem vínculos e transformar clientes em parceiros preservando suas credenciais e seus anúncios existentes.
