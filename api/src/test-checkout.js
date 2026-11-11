@@ -1,7 +1,8 @@
+import { requestMercadoPago } from "./mp-sdk.js";
+import { testOrderPayload } from "./payment-payloads.js";
 import { rateLimit } from "express-rate-limit";
 const ACTION = "MP_TEST_ORDER_CREATED";
 const TEST_AMOUNT = "10.00";
-const TEST_BUYER_EMAIL = "buyer@email.com";
 const orderPattern = /^ORDTST[A-Z0-9]{10,80}$/;
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -93,7 +94,7 @@ export function safeTestOrder(
 }
 export function registerTestCheckoutRoutes(
   app,
-  { db, auth, admin, wrap, env, fetchImpl = fetch },
+  { db, auth, admin, wrap, env, requestMp = requestMercadoPago },
 ) {
   const client = async (path, options = {}) => {
     const token = env.MP_TEST_ACCESS_TOKEN;
@@ -102,25 +103,10 @@ export function registerTestCheckoutRoutes(
         503,
         "Configure MP_TEST_ACCESS_TOKEN no Render com o Access Token da aba Teste.",
       );
-    let response;
     try {
-      response = await fetchImpl("https://api.mercadopago.com" + path, {
-        ...options,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          ...options.headers,
-        },
-        signal: AbortSignal.timeout(20000),
-      });
-    } catch {
-      throw fail(
-        502,
-        "O Mercado Pago não respondeu. Tente novamente; a tentativa será reutilizada.",
-      );
-    }
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403)
+      return await requestMp(token, path, options);
+    } catch (error) {
+      if (error.status === 401 || error.status === 403)
         throw fail(
           502,
           "A credencial de teste foi recusada. Confira a aplicação e a conta vendedora de teste.",
@@ -130,7 +116,6 @@ export function registerTestCheckoutRoutes(
         "Não foi possível consultar/criar a ordem no Mercado Pago. Confira a integração Checkout Pro via Orders e os logs no Developers.",
       );
     }
-    return response.json();
   };
   const seller = async () => {
     const account = await client("/users/me");
@@ -194,20 +179,7 @@ export function registerTestCheckoutRoutes(
       const raw = await client("/v1/orders", {
         method: "POST",
         headers: { "X-Idempotency-Key": key },
-        body: JSON.stringify({
-          type: "online",
-          processing_mode: "manual",
-          total_amount: TEST_AMOUNT,
-          payer: { email: TEST_BUYER_EMAIL },
-          external_reference: reference,
-          items: [
-            {
-              title: "Compra de teste do portal",
-              unit_price: TEST_AMOUNT,
-              quantity: 1,
-            },
-          ],
-        }),
+        body: JSON.stringify(testOrderPayload(reference, TEST_AMOUNT)),
       });
       const order = safeTestOrder(raw, sellerId, reference);
       await db.audit.upsert({

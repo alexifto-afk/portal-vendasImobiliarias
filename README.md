@@ -147,3 +147,7 @@ Veja [ATUALIZAR-FOTOS.md](ATUALIZAR-FOTOS.md) para aplicar esta atualização e 
 ## Compra de teste para obter Order ID no Developers
 
 O painel administrativo tem uma aba **Teste Mercado Pago**, com credencial exclusiva `MP_TEST_ACCESS_TOKEN` no Render. Não é necessário ativar cobranças comerciais para testar. Veja o passo a passo em [TESTAR-MERCADO-PAGO.md](TESTAR-MERCADO-PAGO.md). A criação usa Checkout Pro via Orders e não modifica o fluxo comercial por Preferences nem o sistema ALP.
+
+## Qualidade da integração de pagamentos
+
+Veja [QUALIDADE-MERCADO-PAGO.md](QUALIDADE-MERCADO-PAGO.md) para os campos adicionais, o uso do SDK oficial e o procedimento de nova medição após homologação. Dados sintéticos ficam restritos ao teste; a cobrança comercial solicita dados reais do pagador.

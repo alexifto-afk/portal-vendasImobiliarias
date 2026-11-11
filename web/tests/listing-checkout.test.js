@@ -59,3 +59,22 @@ test("falha no cadastro não abre checkout nem informa que salvou", async () => 
   assert.equal(count, 1);
   assert.equal(created, false);
 });
+
+test("dados reais de pagamento seguem apenas para o checkout da nova listagem", async () => {
+  const payload = { title: "Casa" },
+    payer = { firstName: "Ana", lastName: "Silva", cpf: "12345678909" },
+    calls = [];
+  await createListingCheckout(
+    async (path, options) => {
+      calls.push([path, options]);
+      return path === "/owner/listings"
+        ? { id: "listing" }
+        : { url: "https://www.mercadopago.com.br/checkout" };
+    },
+    payload,
+    () => {},
+    payer,
+  );
+  assert.deepEqual(calls[0][1].body, payload);
+  assert.deepEqual(calls[1][1].body, { payer });
+});
