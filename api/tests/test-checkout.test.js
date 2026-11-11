@@ -62,14 +62,10 @@ before(async () => {
     auth,
     admin: (q, r, n) => (q.user.role === "ADMIN" ? n() : r.sendStatus(403)),
     wrap: (fn) => (q, r, n) => Promise.resolve(fn(q, r, n)).catch(n),
-    fetchImpl: async (path, options) => {
-      requests.push({ path, options });
-      assert.equal(options.headers.Authorization, "Bearer test-only-token");
-      return {
-        ok: true,
-        json: async () =>
-          path.endsWith("/users/me") ? { id: 42, tags } : raw(),
-      };
+    requestMp: async (accessToken, path, options) => {
+      requests.push({ path: "https://api.mercadopago.com" + path, options });
+      assert.equal(accessToken, "test-only-token");
+      return path.endsWith("/users/me") ? { id: 42, tags } : raw();
     },
   });
   app.use((e, q, r, n) => r.status(e.status || 500).json({ error: e.message }));
@@ -117,12 +113,20 @@ test("cria ordem sem vínculo financeiro e retoma tentativa idempotente sem repe
   assert.equal(post.options.headers["X-Idempotency-Key"], key);
   const body = JSON.parse(post.options.body);
   assert.equal(body.total_amount, "10.00");
-  assert.deepEqual(body.payer, { email: "buyer@email.com" });
-  assert.deepEqual(body.items, [
-    { title: "Compra de teste do portal", unit_price: "10.00", quantity: 1 },
-  ]);
-  assert.equal(body.processing_mode, "manual");
-  assert.equal(body.external_reference, "portal-test-" + key);
+  assert.equal(body.payer.email, "buyer@email.com");
+  assert.equal(body.payer.first_name, "APRO");
+  assert.equal(body.payer.last_name, "Teste");
+  assert.deepEqual(body.payer.identification, {
+    type: "CPF",
+    number: "12345678909",
+  });
+  assert.equal(body.items[0].unit_price, "10.00");
+  assert.equal(body.items[0].category_id, "services");
+  assert.ok(body.items[0].description.length > 20);
+  assert.equal(
+    body.additional_info["payer.registration_date"],
+    "2026-11-01T00:00:00.000Z",
+  );
   const count = requests.length;
   assert.equal((await create()).status, 200);
   assert.equal(requests.length, count);

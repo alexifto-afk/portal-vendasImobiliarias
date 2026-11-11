@@ -1,3 +1,5 @@
+import { requestMercadoPago } from "./mp-sdk.js";
+import { payerSchema, preferencePayload } from "./payment-payloads.js";
 import "dotenv/config";
 import { registerTestCheckoutRoutes } from "./test-checkout.js";
 import express from "express";
@@ -106,21 +108,14 @@ async function owned(q) {
   return l;
 }
 async function mp(path, options = {}) {
-  const response = await fetch(`https://api.mercadopago.com${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${env.MP_ACCESS_TOKEN}`,
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!response.ok)
+  try {
+    return await requestMercadoPago(env.MP_ACCESS_TOKEN, path, options);
+  } catch {
     throw fail(
       502,
       "Não foi possível consultar o provedor de pagamento. Tente novamente.",
     );
-  return response.json();
+  }
 }
 app.get("/api/health", (_q, r) => r.json({ ok: true }));
 const getCommercial = registerCommercialRoutes(app, {
@@ -329,26 +324,15 @@ app.post(
     if (l.paidAt || l.status === "CANCELLED")
       throw fail(409, "Anúncio já pago ou cancelado.");
     if (l.checkoutUrl) return r.json({ url: l.checkoutUrl });
+    const payer = payerSchema.parse(q.body?.payer);
+    const owner = await db.user.findUnique({
+      where: { id: l.ownerId },
+      select: { email: true, createdAt: true },
+    });
+    if (!owner) throw fail(404, "Proprietário não encontrado.");
     const pref = await mp("/checkout/preferences", {
       method: "POST",
-      body: JSON.stringify({
-        items: [
-          {
-            id: l.id,
-            title: `Anúncio por ${l.durationDays} dias: ${l.title}`,
-            quantity: 1,
-            currency_id: "BRL",
-            unit_price: l.adPrice / 100,
-          },
-        ],
-        external_reference: l.id,
-        back_urls: {
-          success: webOrigin + "/?payment=returned",
-          pending: webOrigin + "/?payment=pending",
-          failure: webOrigin + "/?payment=failure",
-        },
-        auto_return: "approved",
-      }),
+      body: JSON.stringify(preferencePayload(l, owner, payer, webOrigin)),
     });
     const url = pref.init_point;
     if (!url?.startsWith("https://")) throw fail(502, "Checkout indisponível.");

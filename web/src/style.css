@@ -1863,3 +1863,20 @@ footer a:not(.brand) {
   font-family: monospace;
   font-size: 13px;
 }
+.payment-fields legend {
+  font-size: 14px;
+  font-weight: 650;
+  padding: 0 8px;
+}
+.payment-fields p {
+  font-size: 12px;
+}
+.payment-form-fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.payment-fields {
+  min-width: 0;
+}

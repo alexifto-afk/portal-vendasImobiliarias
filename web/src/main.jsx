@@ -20,6 +20,7 @@ import "./style.css";
 import { MediaImage, PhotoPicker } from "./media.jsx";
 import { uploadSelectedPhotos } from "./photo-uploads.js";
 import CommercialSettings from "./CommercialSettings.jsx";
+import PaymentFields, { readPaymentDetails } from "./PaymentFields.jsx";
 import TestCheckout from "./TestCheckout.jsx";
 import { createListingCheckout } from "./listing-checkout.js";
 import { emptyFilters, findListings, areaLabel } from "./catalog.js";
@@ -906,6 +907,7 @@ function Property({ listing: l, demo, config }) {
 function Owner({ config, setError }) {
   const [items, setItems] = useState([]),
     [photos, setPhotos] = useState([]),
+    [paymentListing, setPaymentListing] = useState(null),
     [show, setShow] = useState(false),
     [busy, setBusy] = useState(false),
     [feedback, setFeedback] = useState(""),
@@ -927,6 +929,11 @@ function Owner({ config, setError }) {
     load();
   }, []);
   async function action(l, checkout) {
+    if (checkout) {
+      setPaymentListing(l);
+      setFeedback("");
+      return;
+    }
     setBusy(true);
     setFeedback("");
     try {
@@ -986,7 +993,10 @@ function Owner({ config, setError }) {
               return;
             }
             try {
-              const f = Object.fromEntries(new FormData(e.currentTarget));
+              const formData = new FormData(e.currentTarget);
+              const { billingFirstName, billingLastName, billingCpf, ...f } =
+                Object.fromEntries(formData);
+              const payer = readPaymentDetails(formData);
               const images = await uploadSelectedPhotos(
                 photos,
                 api,
@@ -1017,6 +1027,7 @@ function Owner({ config, setError }) {
                   photos.forEach((photo) => URL.revokeObjectURL(photo.preview));
                   setPhotos([]);
                 },
+                payer,
               );
               if (result.url) window.location.assign(result.url);
               else setFeedback(result.error);
@@ -1134,6 +1145,7 @@ function Owner({ config, setError }) {
               </label>
             ))}
           </div>
+          <PaymentFields />
           <h3>Condições comerciais</h3>
           <p>
             Anúncio:{" "}
@@ -1245,6 +1257,61 @@ function Owner({ config, setError }) {
           </div>
         )}
       </div>
+      {paymentListing && (
+        <div className="modal-shade">
+          <section
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pagar anúncio"
+          >
+            <button
+              type="button"
+              className="close"
+              aria-label="Fechar"
+              onClick={() => setPaymentListing(null)}
+              disabled={busy}
+            >
+              <X />
+            </button>
+            <h2>Pagar anúncio</h2>
+            <p>
+              {paymentListing.title} · {money(paymentListing.adPrice)}
+            </p>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const payer = readPaymentDetails(new FormData(e.currentTarget));
+                setBusy(true);
+                setFeedback("");
+                try {
+                  const d = await api(
+                    `/owner/listings/${paymentListing.id}/checkout`,
+                    { method: "POST", body: { payer } },
+                  );
+                  window.location.assign(d.url);
+                } catch (e) {
+                  setFeedback(e.message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <fieldset disabled={busy} className="payment-form-fields">
+                <PaymentFields />
+              </fieldset>
+              {feedback && (
+                <p className="notice error" role="alert">
+                  {feedback}
+                </p>
+              )}
+              <button className="primary wide" disabled={busy}>
+                {busy ? "Preparando pagamento…" : "Continuar no Mercado Pago"}
+              </button>
+            </form>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

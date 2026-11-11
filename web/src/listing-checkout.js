@@ -1,6 +1,11 @@
 // Se o checkout falhar depois do cadastro, preserve o anúncio para tentar pagar
 // pelo painel, sem repetir o cadastro e criar anúncios duplicados.
-export async function createListingCheckout(request, payload, onCreated) {
+export async function createListingCheckout(
+  request,
+  payload,
+  onCreated,
+  payer,
+) {
   const listing = await request("/owner/listings", {
     method: "POST",
     body: payload,
@@ -9,6 +14,7 @@ export async function createListingCheckout(request, payload, onCreated) {
   try {
     const checkout = await request(`/owner/listings/${listing.id}/checkout`, {
       method: "POST",
+      ...(payer ? { body: { payer } } : {}),
     });
     return { listing, url: checkout.url };
   } catch (error) {
