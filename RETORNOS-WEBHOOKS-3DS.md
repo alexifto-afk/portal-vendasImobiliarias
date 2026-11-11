@@ -87,3 +87,13 @@ Testes automatizados cobrem assinatura ausente/falsa/expirada, timestamp nas dua
 - [Descrição de fatura](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-orders/additional-settings/configure-invoice-description)
 - [Notificações e validação de assinatura](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-orders/notifications)
 - [SDK oficial Node.js](https://github.com/mercadopago/sdk-nodejs)
+
+## Ajuste de configuração 3DS e erros de criação
+
+A versão inicial adicionou apenas `liability_shift: required`. O payload passa a declarar também `config.online.transaction_security.validation: on_fraud_risk`, conforme a configuração de autenticação documentada para Orders e o tipo do SDK oficial. Não há downgrade para `preferred`, `never` ou desativação automática de segurança.
+
+Se a criação/consulta for recusada, a mensagem administrativa informa a operação, o HTTP status e códigos controlados disponíveis no erro do SDK, sem expor descrições livres, token ou dados pessoais. O SDK pode não preservar todos os detalhes de uma resposta Orders; consulte o registro da solicitação no Developers se os códigos não forem suficientes. Uma configuração incompleta foi corrigida, mas a origem da rejeição reportada não foi comprovada por resposta autenticada do provedor nesta sessão. Ainda é necessário concluir uma nova compra de homologação após merge e deploy.
+
+Referência de autenticação Orders: https://www.mercadopago.com.br/developers/pt/docs/checkout-api-orders/payment-management/integrate-3ds . A referência é de Checkout Transparente via Orders; o portal mantém Checkout Pro manual e não altera o modo de processamento ou adiciona tratamento de cartão no backend. É necessário confirmar no teste online a aceitação/comportamento da configuração pelo Checkout Pro.
+
+A atualização também separa a tentativa pendente do navegador das versões anteriores do payload. Isso evita reenviar a mesma chave antiga com parâmetros de criação diferentes depois do deploy; tentativas dentro desta versão continuam idempotentes. Ordens já criadas permanecem no histórico.

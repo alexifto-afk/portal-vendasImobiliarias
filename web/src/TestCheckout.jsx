@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ArrowUpRight, Copy, RefreshCw } from "lucide-react";
-const pendingKey = "portal-mp-test-attempt";
+// O payload mudou; não reutilizar a tentativa de uma configuração anterior.
+const pendingKey = "portal-mp-test-attempt-3ds-validation-v2";
 export default function TestCheckout({ request }) {
   const [data, setData] = useState(null),
     [webhooks, setWebhooks] = useState(null),

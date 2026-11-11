@@ -1,3 +1,4 @@
+import { safeProviderError } from "./mp-errors.js";
 import { requestMercadoPago } from "./mp-sdk.js";
 import { testOrderPayload } from "./payment-payloads.js";
 import { rateLimit } from "express-rate-limit";
@@ -106,17 +107,28 @@ export function registerTestCheckoutRoutes(
     try {
       return await requestMp(token, path, options);
     } catch (error) {
-      if (error.status === 401 || error.status === 403)
-        throw fail(
-          502,
-          "A credencial de teste foi recusada. Confira a aplicação e a conta vendedora de teste.",
-        );
+      const diagnostic = safeProviderError(error);
+      const operation =
+        path === "/users/me"
+          ? "verificar a conta de teste"
+          : options.method === "POST"
+            ? "criar a ordem de teste"
+            : "consultar a ordem de teste";
+      const details = [
+        diagnostic.httpStatus ? `HTTP ${diagnostic.httpStatus}` : null,
+        diagnostic.codes.length
+          ? `códigos: ${diagnostic.codes.join(", ")}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join("; ");
       throw fail(
         502,
-        "Não foi possível consultar/criar a ordem no Mercado Pago. Confira a integração Checkout Pro via Orders e os logs no Developers.",
+        `Não foi possível ${operation} no Mercado Pago${details ? ` (${details})` : ""}. Confira o registro da solicitação no Developers. Não altere as credenciais sem verificar o motivo.`,
       );
     }
   };
+
   const seller = async () => {
     const account = await client("/users/me");
     if (

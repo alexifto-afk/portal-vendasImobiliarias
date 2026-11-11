@@ -45,7 +45,10 @@ export function checkoutConfig(origin, descriptor = "LPIMOVEIS") {
       failure_url: base + "/?payment=failure&flow=test",
       pending_url: base + "/?payment=pending&flow=test",
       auto_return: "approved",
-      transaction_security: { liability_shift: "required" },
+      transaction_security: {
+        validation: "on_fraud_risk",
+        liability_shift: "required",
+      },
     },
   };
 }
