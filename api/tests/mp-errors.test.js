@@ -1,6 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { safeProviderError } from "../src/mp-errors.js";
+test("Orders property_value identifica somente campos conhecidos na mensagem", () => {
+  const result = safeProviderError({status: 400, errors: [{
+    code: "property_value",
+    message: "Invalid value 'private@example.com' for property 'additional_info.payer.authentication_type'; APP_USR-secret",
+  }, {code: "property_value", description: "items[0].category_id invalid"}]});
+  assert.deepEqual(result.fields, ["additional_info.payer.authentication_type", "items[0].category_id"]);
+  assert.equal(result.codes[0], "property_value");
+  assert.ok(!JSON.stringify(result).includes("private"));
+  assert.ok(!JSON.stringify(result).includes("APP_USR"));
+  assert.deepEqual(safeProviderError({message: "payer.private_secret payer.email.secret"}).fields, []);
+});
 test("erro do SDK retorna HTTP e códigos controlados, sem expor dados livres", () => {
   const result = safeProviderError({
     status: 400,
