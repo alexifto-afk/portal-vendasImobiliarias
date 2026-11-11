@@ -10,7 +10,7 @@
     "seed": "node src/seed.js",
     "test": "node --test tests/*.test.js",
     "postinstall": "patch-package --error-on-fail",
-    "test:partners": "node --test integration/partners.test.js"
+    "test:partners": "node --test integration/*.test.js"
   },
   "engines": {
     "node": ">=22"

@@ -15,7 +15,7 @@ Esta atualização adiciona indicação por **cupom**, sem depender de link ou c
 1. O parceiro cria uma conta comum em **Entrar → Quero criar uma conta** e escolhe sua própria senha. Não precisa cadastrar imóvel nem comprar anúncio.
 2. Como administrador, entre em **Meu painel → Parceiros e cupons**.
 3. Em **Novo parceiro**, informe o e-mail exato dessa conta e o saque mínimo em reais. Salve.
-4. Peça ao parceiro para sair e entrar novamente (ou atualizar a página). Aparecerá **Área do parceiro** no cabeçalho.
+4. Peça ao parceiro para sair e entrar novamente (ou atualizar a página). Aparecerá **Área do parceiro** na faixa de sessão no topo.
 5. Desativar uma parceria bloqueia novas utilizações de cupons e novas solicitações de saque, mas preserva o extrato, os créditos anteriores e saques já solicitados. Para liberar saldo de uma parceria desativada, regularize a parceria no painel; não remova seus dados.
 
 ## Criar o cupom
@@ -31,7 +31,7 @@ No mesmo painel, preencha **Novo cupom**:
 
 Os valores e o prazo são obrigatórios; nenhum cupom ou desconto é criado automaticamente. Desconto + crédito não podem superar o preço do plano. Considere também as taxas do Mercado Pago ao definir sua margem.
 
-Condições de um cupom são imutáveis: desative-o e crie outro código para mudar valores/validade/planos. Pode ativar/desativar o existente. O sistema revalida validade, plano, limite, preço e parceria no cadastro. O parceiro não pode usar o próprio cupom na mesma conta. Isso não constitui verificação de identidade entre contas diferentes.
+Em **Cupons cadastrados → Editar**, os valores, validade, planos e prazo podem ser alterados para novas contratações. Anúncios anteriores preservam as condições registradas. O parceiro do cupom e o código já utilizado são preservados. A edição exige que cotações antigas sejam aplicadas novamente antes de contratar. Também é possível ativar/desativar o cupom. O sistema revalida validade, plano, limite, preço e parceria no cadastro. O parceiro não pode usar o próprio cupom na mesma conta. Isso não constitui verificação de identidade entre contas diferentes.
 
 ## O que o anunciante vê
 
@@ -81,3 +81,5 @@ PORTAL_PARTNER_TEST_DATABASE_URL="$DATABASE_URL" npm run test:partners
 ```
 
 A suíte cria seus próprios usuários/anúncios e remove os fixtures ao terminar. Os testes de notificações substituem somente a consulta ao Mercado Pago por respostas locais; não enviam cobranças ou Pix reais. Cobrem anúncio com cupom via API real, valores adulterados, privacidade/permissões, limite concorrente, idempotência de créditos, prazo, saldo reservado, aprovação/recusa de saque e estornos antes/depois do repasse.
+
+Para tabelas, pesquisa, edição e exclusão protegida, veja [NAVEGACAO-E-PERFIL.md](NAVEGACAO-E-PERFIL.md).

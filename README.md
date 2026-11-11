@@ -163,3 +163,7 @@ Veja [BOAS-PRATICAS-PAGADOR.md](BOAS-PRATICAS-PAGADOR.md) para código externo d
 ## Parceiros e cupons
 
 Veja [PARCEIROS-E-CUPONS.md](PARCEIROS-E-CUPONS.md) para implantação, cadastro dos blogueiros, descontos, extrato, saques manuais por Pix, compensação de estornos e testes de concorrência com PostgreSQL isolado.
+
+## Navegação e perfil do usuário
+
+Veja [NAVEGACAO-E-PERFIL.md](NAVEGACAO-E-PERFIL.md) para as abas e tabelas de parceiros/cupons, pesquisa, edição/exclusão protegida, cadastro com CPF/celular/endereço, Meu perfil e os botões de sessão no topo.
