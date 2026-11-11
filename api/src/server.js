@@ -1,3 +1,4 @@
+import { registerPasswordResetRoutes } from "./password-reset.js";
 import { registerCustomerRoutes } from "./customers.js";
 import { requireAdvertiser } from "./access.js";
 import {
@@ -97,12 +98,15 @@ const auth = wrap(async (q, r, n) => {
     select: {
       id: true,
       role: true,
+      authVersion: true,
       name: true,
       email: true,
       partner: { select: { active: true } },
     },
   });
   if (!q.user) throw fail(401, "Conta não encontrada.");
+  if ((token.v ?? 0) !== q.user.authVersion)
+    throw fail(401, "Sua sessão expirou. Entre novamente.");
   n();
 });
 const admin = (q, r, n) =>
@@ -115,7 +119,7 @@ const publicWhere = () => ({
   expiresAt: { gt: new Date() },
 });
 const tokenFor = (u) =>
-  jwt.sign({ sub: u.id }, env.JWT_SECRET, {
+  jwt.sign({ sub: u.id, v: u.authVersion ?? 0 }, env.JWT_SECRET, {
     expiresIn: "8h",
     algorithm: "HS256",
   });
@@ -153,6 +157,7 @@ registerCustomerRoutes(app, { db, auth, admin, wrap, audit });
 registerImageRoutes(app, { db, auth, wrap, requireAdvertiser });
 registerTestCheckoutRoutes(app, { db, auth, admin, wrap, env });
 registerWebhookRoutes(app, { db, wrap, env, auth, admin });
+registerPasswordResetRoutes(app, { db, wrap, env });
 app.post(
   "/api/auth/register",
   authLimit,

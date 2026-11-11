@@ -851,3 +851,53 @@ test("duas conversões concorrentes criam uma única parceria", async () => {
   );
   assert.equal(await db.partner.count({ where: { userId: u.id } }), 1);
 });
+
+test("troca por código permite login novo e revoga sessões antigas, inclusive JWT sem versão", async () => {
+  const { issuePasswordReset, confirmPasswordReset } = await import(
+    "../src/password-reset.js"
+  );
+  const u = await newCustomer("reset-login"),
+    oldToken = jwt.sign({ sub: u.id }, secret);
+  const initial = await request("/auth/login", {
+    who: null,
+    body: { email: u.email, password },
+  });
+  assert.equal(initial.status, 200);
+  const now = new Date(),
+    ticket = await issuePasswordReset(db, secret, u.email, {
+      now,
+      makeCode: () => "000123",
+    });
+  await confirmPasswordReset(
+    db,
+    secret,
+    {
+      email: u.email,
+      requestId: ticket.public.requestId,
+      code: "000123",
+      password: "changed-login-password-123",
+    },
+    new Date(now.getTime() + 1000),
+  );
+  assert.equal((await request("/me", { token: oldToken })).status, 401);
+  assert.equal(
+    (await request("/me", { token: initial.data.token })).status,
+    401,
+  );
+  assert.equal(
+    (
+      await request("/auth/login", {
+        who: null,
+        body: { email: u.email, password },
+      })
+    ).status,
+    401,
+  );
+  const login = await request("/auth/login", {
+    who: null,
+    body: { email: u.email, password: "changed-login-password-123" },
+  });
+  assert.equal(login.status, 200);
+  assert.equal(login.data.user.role, "OWNER");
+  assert.equal((await request("/me", { token: login.data.token })).status, 200);
+});

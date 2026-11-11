@@ -10,7 +10,7 @@
 6. Após o cadastro, informe ao parceiro o endereço do portal, o e-mail e a senha definidos. O sistema não envia e-mail ou WhatsApp automaticamente.
 7. Crie o cupom na aba **Novo cupom** e selecione o parceiro.
 
-O cadastro cria a conta e o vínculo de parceria juntos. Em caso de conflito de e-mail/CPF ou falha no vínculo, não é deixada uma conta parcial. A senha é armazenada como hash bcrypt; não é retornada na resposta da API, na tabela ou na auditoria. Depois de cadastrar, não há consulta da senha no painel. Este recurso não inclui recuperação ou redefinição de senha.
+O cadastro cria a conta e o vínculo de parceria juntos. Em caso de conflito de e-mail/CPF ou falha no vínculo, não é deixada uma conta parcial. A senha é armazenada como hash bcrypt; não é retornada na resposta da API, na tabela ou na auditoria. Depois de cadastrar, não há consulta da senha no painel. O próprio parceiro pode redefinir a senha em Entrar → Esqueci minha senha, após configurar o envio de e-mail conforme [RECUPERAR-SENHA.md](RECUPERAR-SENHA.md).
 
 ## O que o parceiro acessa
 
