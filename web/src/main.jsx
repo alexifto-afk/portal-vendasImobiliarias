@@ -1,3 +1,4 @@
+import ForgotPassword from "./ForgotPassword.jsx";
 import Customers from "./Customers.jsx";
 import { dashboardFor } from "./partner-access.js";
 import Tabs from "./Tabs.jsx";
@@ -805,7 +806,23 @@ function App() {
 function Auth({ onSuccess }) {
   const [register, setRegister] = useState(false),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [forgot, setForgot] = useState(false),
+    [email, setEmail] = useState(""),
+    [notice, setNotice] = useState("");
+  if (forgot)
+    return (
+      <ForgotPassword
+        request={api}
+        initialEmail={email}
+        onBack={() => setForgot(false)}
+        onDone={(address) => {
+          setEmail(address);
+          setForgot(false);
+          setNotice("Senha alterada. Entre com sua nova senha.");
+        }}
+      />
+    );
   return (
     <>
       <div className="kicker">ACESSO AO PORTAL</div>
@@ -817,6 +834,11 @@ function Auth({ onSuccess }) {
           ? "Crie sua conta para anunciar e acompanhar seu imóvel."
           : "Entre para acessar seu painel e acompanhar suas atividades."}
       </p>
+      {notice && (
+        <p className="notice" role="status">
+          {notice}
+        </p>
+      )}
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -851,6 +873,8 @@ function Auth({ onSuccess }) {
           type="email"
           required
           autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
         <Field
           label="Senha"
@@ -872,6 +896,19 @@ function Auth({ onSuccess }) {
           <ArrowRight size={17} />
         </button>
       </form>
+      {!register && (
+        <button
+          className="text-button wide"
+          type="button"
+          onClick={() => {
+            setForgot(true);
+            setError("");
+            setNotice("");
+          }}
+        >
+          Esqueci minha senha
+        </button>
+      )}
       <button
         className="text-button wide"
         onClick={() => {

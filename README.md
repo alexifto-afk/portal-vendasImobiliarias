@@ -123,7 +123,7 @@ Configure `VITE_API_URL=https://SUA-API.onrender.com/api` e faça deploy. Coloqu
 - O resumo de negociação **não é um contrato de compra e venda/locação completo**, não assina documentos e não substitui análise da matrícula, titularidade, escritura ou registro quando aplicáveis.
 - O recebimento de comissão é manual. Não há repasse/split automático para o corretor.
 - Reembolsos e chargebacks devem ser acompanhados no Mercado Pago. O webhook de produção processa estornos recebidos e retira o anúncio; não há varredura periódica de reconciliação. Confira entregas e retire o anúncio manualmente se necessário. Uma tentativa paga duplicada não gera novo prazo; confira e devolva duplicidades pelo PSP.
-- Não há recuperação de senha, edição/renovação pelo anunciante, notificações automáticas nem assinatura digital. As fotos enviadas são validadas, reduzidas e convertidas para WebP, sem os metadados originais.
+- Há recuperação de senha por código de e-mail após configurar o remetente. Não há edição/renovação do anúncio pelo anunciante, notificações comerciais automáticas nem assinatura digital. As fotos enviadas são validadas, reduzidas e convertidas para WebP, sem os metadados originais.
 - O catálogo retorna até 100 anúncios, o painel até 500 registros e o histórico até 200 eventos recentes. Totais no painel correspondem a essa janela. Paginação e relatórios completos são evolução necessária com aumento de volume.
 - Rate limit é em memória, adequado a instância única; para múltiplas instâncias use armazenamento compartilhado. JWT fica em sessionStorage e expira em 8h; logout remove a sessão do navegador.
 - Imagens de exemplo são externas do Unsplash; fontes do Google Fonts. O catálogo de exemplo só aparece quando a API está indisponível e é identificado. APIs funcionais exigem Neon configurado.
@@ -175,3 +175,7 @@ Em Novo parceiro, o administrador pode criar a conta e a parceria com nível Par
 ## Clientes cadastrados
 
 Veja [CLIENTES-CADASTRADOS.md](CLIENTES-CADASTRADOS.md) para pesquisar usuários no painel administrativo, editar e detalhar cadastros, excluir contas sem vínculos e transformar clientes em parceiros preservando suas credenciais e seus anúncios existentes.
+
+## Esqueci minha senha
+
+Veja [RECUPERAR-SENHA.md](RECUPERAR-SENHA.md) para ativar o código de recuperação por e-mail, configurar `RESEND_API_KEY` e `RESET_EMAIL_FROM` no Render e validar a troca de senha e a revogação de sessões anteriores.

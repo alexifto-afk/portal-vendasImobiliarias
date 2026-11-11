@@ -10,6 +10,7 @@ model User {
   name String
   email String @unique
   passwordHash String
+  authVersion Int @default(0)
   cpf String? @unique
   phone String?
   address String?
@@ -17,7 +18,24 @@ model User {
   listings Listing[]
   uploads ImageUpload[]
   partner Partner?
+  passwordResets PasswordReset[]
   createdAt DateTime @default(now())
+}
+
+model PasswordReset {
+  id String @id
+  challengeId String @unique
+  userId String?
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash String?
+  credentialVersion Int @default(0)
+  requestedAt DateTime
+  expiresAt DateTime
+  attempts Int @default(0)
+  windowStartedAt DateTime
+  requests Int
+  @@index([userId])
+  @@index([windowStartedAt])
 }
 model Listing {
   id String @id @default(cuid())
