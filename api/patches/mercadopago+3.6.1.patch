@@ -1,0 +1,12 @@
+diff --git a/node_modules/mercadopago/dist/utils/errors/index.js b/node_modules/mercadopago/dist/utils/errors/index.js
+index f7c1834..5767988 100644
+--- a/node_modules/mercadopago/dist/utils/errors/index.js
++++ b/node_modules/mercadopago/dist/utils/errors/index.js
+@@ -27,6 +27,7 @@ class MercadoPagoError extends Error {
+         this.status = (_a = body.status) !== null && _a !== void 0 ? _a : 0;
+         this.error = (_b = body.error) !== null && _b !== void 0 ? _b : '';
+         this.causes = (_c = body.cause) !== null && _c !== void 0 ? _c : [];
++        this.errors = Array.isArray(body.errors) ? body.errors : [];
+         // Maintain prototype chain in compiled JavaScript
+         Object.setPrototypeOf(this, new.target.prototype);
+     }
