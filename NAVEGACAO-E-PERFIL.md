@@ -54,3 +54,7 @@ npm run build --prefix web
 A suíte `npm run test:partners --prefix api` também cobre os fluxos de perfil e administração. Configure `PORTAL_PARTNER_TEST_DATABASE_URL` exclusivamente com PostgreSQL local, banco `portal_partner_test`, com as migrações aplicadas, conforme [PARCEIROS-E-CUPONS.md](PARCEIROS-E-CUPONS.md). Não use credenciais ou banco de produção.
 
 Os testes verificam cadastro obrigatório, normalização e unicidade de CPF, contas antigas, acesso restrito ao próprio perfil, prevenção de mudança de privilégios, edição de cupons sem alterar anúncios anteriores, cotações antigas e exclusão protegida. A validação de navegador foi feita em Chromium, em computador e celular, contra API e PostgreSQL locais, incluindo formulários, tabelas, ações e saída da sessão; sem cobranças ou Pix reais.
+
+## Login de novos parceiros
+
+O formulário Novo parceiro agora permite criar login e senha com nível Parceiro, sem cadastro prévio pelo blogueiro. Veja [ACESSO-DO-PARCEIRO.md](ACESSO-DO-PARCEIRO.md). A alternativa Vincular conta existente preserva as permissões e a senha anteriores.

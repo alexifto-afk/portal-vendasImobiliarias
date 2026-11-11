@@ -38,7 +38,10 @@ export async function normalizePhoto(buffer) {
     );
   }
 }
-export function registerImageRoutes(app, { db, auth, wrap }) {
+export function registerImageRoutes(
+  app,
+  { db, auth, wrap, requireAdvertiser = (_q, _r, next) => next() },
+) {
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: MAX_IMAGE_BYTES, files: 1, fields: 0 },
@@ -70,6 +73,7 @@ export function registerImageRoutes(app, { db, auth, wrap }) {
   app.post(
     "/api/uploads",
     auth,
+    requireAdvertiser,
     limit,
     capacity,
     (q, r, n) =>
@@ -87,12 +91,10 @@ export function registerImageRoutes(app, { db, auth, wrap }) {
         where: { ownerId: q.user.id, listingId: null },
       });
       if (count >= 24)
-        return r
-          .status(409)
-          .json({
-            error:
-              "Você já tem muitas fotos não utilizadas. Remova fotos antes de enviar novas.",
-          });
+        return r.status(409).json({
+          error:
+            "Você já tem muitas fotos não utilizadas. Remova fotos antes de enviar novas.",
+        });
       const data = await normalizePhoto(q.file.buffer),
         id = randomUUID();
       await db.imageUpload.create({
@@ -135,6 +137,7 @@ export function registerImageRoutes(app, { db, auth, wrap }) {
   app.delete(
     "/api/uploads/:id",
     auth,
+    requireAdvertiser,
     wrap(async (q, r) => {
       const result = await db.imageUpload.deleteMany({
         where: { id: q.params.id, ownerId: q.user.id, listingId: null },
