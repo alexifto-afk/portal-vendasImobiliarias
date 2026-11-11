@@ -171,7 +171,7 @@ test("histórico usa somente pagamentos confirmados informados pelo servidor e o
   );
   assert.equal(first.payer.is_first_purchase_online, true);
   assert.equal("last_purchase" in first.payer, false);
-  assert.equal(first.payer.authentication_type, "PASSWORD");
+  assert.equal(first.payer.authentication_type, "Native web");
   assert.deepEqual(first.payer.phone, p.phone);
   const repeat = preferencePayload(
     l,
@@ -190,7 +190,7 @@ test("ordem de homologação traz código de produto e perfil de comprador repet
   const body = testOrderPayload("opaque-reference", "10.00");
   assert.equal(body.items[0].external_code, "PORTAL-TEST-ADVERTISEMENT");
   assert.deepEqual(body.payer.phone, { area_code: "11", number: "999999999" });
-  assert.equal(body.additional_info["payer.authentication_type"], "PASSWORD");
+  assert.equal(body.additional_info["payer.authentication_type"], "WEB");
   assert.equal(body.additional_info["payer.is_first_purchase_online"], false);
   assert.ok(
     Date.parse(body.additional_info["payer.last_purchase"]) >
