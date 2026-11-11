@@ -17,6 +17,7 @@ import {
   Building2,
 } from "lucide-react";
 import "./style.css";
+import { paymentReturnMessage } from "./payment-result.js";
 import { MediaImage, PhotoPicker } from "./media.jsx";
 import { uploadSelectedPhotos } from "./photo-uploads.js";
 import CommercialSettings from "./CommercialSettings.jsx";
@@ -243,14 +244,9 @@ function App() {
           </button>
         </div>
       </header>
-      {["returned", "pending", "failure"].includes(
-        new URLSearchParams(window.location.search).get("payment"),
-      ) && (
+      {paymentReturnMessage(new URLSearchParams(window.location.search)) && (
         <div className="notice" role="status">
-          {new URLSearchParams(window.location.search).get("flow") === "test"
-            ? "Você voltou do pagamento de teste. Abra Meu painel → Teste Mercado Pago e consulte a ordem."
-            : "Você voltou do Mercado Pago. Entre em Meu painel para conferir a confirmação do pagamento do anúncio."}{" "}
-          O retorno a esta página não confirma o pagamento.
+          {paymentReturnMessage(new URLSearchParams(window.location.search))}
         </div>
       )}
       {error && (
@@ -1004,8 +1000,13 @@ function Owner({ config, setError }) {
             }
             try {
               const formData = new FormData(e.currentTarget);
-              const { billingFirstName, billingLastName, billingCpf, ...f } =
-                Object.fromEntries(formData);
+              const {
+                billingFirstName,
+                billingLastName,
+                billingCpf,
+                billingPhone,
+                ...f
+              } = Object.fromEntries(formData);
               const payer = readPaymentDetails(formData);
               const images = await uploadSelectedPhotos(
                 photos,

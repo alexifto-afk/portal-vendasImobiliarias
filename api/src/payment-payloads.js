@@ -11,9 +11,31 @@ export function validCpf(value) {
   }
   return true;
 }
+export function brazilianPhone(value) {
+  let digits = String(value).replace(/\D/g, "");
+  if ([12, 13].includes(digits.length) && digits.startsWith("55"))
+    digits = digits.slice(2);
+  if (!/^[1-9]{2}\d{8,9}$/.test(digits)) return null;
+  return { area_code: digits.slice(0, 2), number: digits.slice(2) };
+}
+export function purchaseMetadata(history) {
+  if (!history) return {};
+  return {
+    authentication_type: "PASSWORD",
+    is_first_purchase_online: !history.lastPaidAt,
+    ...(history.lastPaidAt
+      ? { last_purchase: new Date(history.lastPaidAt).toISOString() }
+      : {}),
+  };
+}
 export const payerSchema = z.object({
   firstName: z.string().trim().min(2).max(80),
   lastName: z.string().trim().min(2).max(100),
+  phone: z
+    .string()
+    .transform(brazilianPhone)
+    .refine(Boolean, "Informe o telefone do pagador com DDD.")
+    .optional(),
   cpf: z
     .string()
     .transform((s) => s.replace(/\D/g, ""))
@@ -58,6 +80,7 @@ export function preferencePayload(
   payer,
   origin,
   descriptor = "LPIMOVEIS",
+  history,
 ) {
   const registration = new Date(user.createdAt).toISOString();
   return {
@@ -80,6 +103,8 @@ export function preferencePayload(
       email: user.email,
       identification: { type: "CPF", number: payer.cpf },
       registration_date: registration,
+      ...(payer.phone ? { phone: payer.phone } : {}),
+      ...purchaseMetadata(history),
     },
     external_reference: listing.id,
     back_urls: {
@@ -102,12 +127,14 @@ export function testOrderPayload(reference, amount, options = {}) {
     external_reference: reference,
     payer: {
       email: "buyer@email.com",
+      phone: { area_code: "11", number: "999999999" },
       first_name: "APRO",
       last_name: "Teste",
       identification: { type: "CPF", number: "12345678909" },
     },
     items: [
       {
+        external_code: "PORTAL-TEST-ADVERTISEMENT",
         title: "Compra de teste do portal",
         description:
           "Simulação do serviço de divulgação de imóvel. Não publica anúncio nem registra receita real.",
@@ -117,6 +144,11 @@ export function testOrderPayload(reference, amount, options = {}) {
       },
     ],
     // No schema Orders a chave documentada é literal, com ponto; não é objeto aninhado.
-    additional_info: { "payer.registration_date": "2026-11-01T00:00:00.000Z" },
+    additional_info: {
+      "payer.registration_date": "2026-11-01T00:00:00.000Z",
+      "payer.authentication_type": "PASSWORD",
+      "payer.is_first_purchase_online": false,
+      "payer.last_purchase": "2026-11-05T00:00:00.000Z",
+    },
   };
 }
