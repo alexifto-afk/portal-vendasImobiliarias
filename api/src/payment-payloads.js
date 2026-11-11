@@ -19,9 +19,47 @@ export const payerSchema = z.object({
     .transform((s) => s.replace(/\D/g, ""))
     .refine(validCpf, "CPF inválido."),
 });
-export function preferencePayload(listing, user, payer, origin) {
+export function checkoutConfig(origin, descriptor = "LPIMOVEIS") {
+  const url = new URL(origin);
+  if (url.protocol !== "https:" || url.username || url.password)
+    throw Object.assign(
+      Error("Configure WEB_ORIGIN com uma URL HTTPS pública."),
+      { status: 503 },
+    );
+  if (
+    typeof descriptor !== "string" ||
+    !descriptor.trim() ||
+    !/^[A-Z0-9 ]{1,13}$/.test(descriptor)
+  )
+    throw Object.assign(
+      Error(
+        "MP_STATEMENT_DESCRIPTOR deve ter de 1 a 13 letras maiúsculas, números ou espaços.",
+      ),
+      { status: 503 },
+    );
+  const base = url.origin;
+  return {
+    statement_descriptor: descriptor,
+    online: {
+      success_url: base + "/?payment=returned&flow=test",
+      failure_url: base + "/?payment=failure&flow=test",
+      pending_url: base + "/?payment=pending&flow=test",
+      auto_return: "approved",
+      transaction_security: { liability_shift: "required" },
+    },
+  };
+}
+export function preferencePayload(
+  listing,
+  user,
+  payer,
+  origin,
+  descriptor = "LPIMOVEIS",
+) {
   const registration = new Date(user.createdAt).toISOString();
   return {
+    statement_descriptor: checkoutConfig(origin, descriptor)
+      .statement_descriptor,
     items: [
       {
         id: listing.id,
@@ -49,9 +87,13 @@ export function preferencePayload(listing, user, payer, origin) {
     auto_return: "approved",
   };
 }
-export function testOrderPayload(reference, amount) {
+export function testOrderPayload(reference, amount, options = {}) {
   return {
     type: "online",
+    config: checkoutConfig(
+      options.origin || "https://portal-vendas-imobiliarias.vercel.app",
+      options.descriptor,
+    ),
     processing_mode: "manual",
     total_amount: amount,
     external_reference: reference,

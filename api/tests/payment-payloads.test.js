@@ -79,3 +79,39 @@ test("ordem administrativa inclui metadados de qualidade apenas de simulação n
   );
   assert.equal(body.external_reference, "portal-test-abc");
 });
+
+test("Orders inclui retorno HTTPS, identificação de fatura e 3DS obrigatório", () => {
+  const body = testOrderPayload("reference", "10.00", {
+    origin: "https://portal.example/",
+    descriptor: "LPIMOVEIS",
+  });
+  assert.equal(body.config.statement_descriptor, "LPIMOVEIS");
+  assert.equal(
+    body.config.online.transaction_security.liability_shift,
+    "required",
+  );
+  assert.equal(
+    body.config.online.success_url,
+    "https://portal.example/?payment=returned&flow=test",
+  );
+  assert.equal(
+    body.config.online.failure_url,
+    "https://portal.example/?payment=failure&flow=test",
+  );
+  assert.equal(
+    body.config.online.pending_url,
+    "https://portal.example/?payment=pending&flow=test",
+  );
+  assert.throws(
+    () => testOrderPayload("ref", "10.00", { origin: "http://portal.example" }),
+    /HTTPS/,
+  );
+  assert.throws(
+    () =>
+      testOrderPayload("ref", "10.00", {
+        origin: "https://portal.example",
+        descriptor: "12345678901234",
+      }),
+    /MP_STATEMENT_DESCRIPTOR/,
+  );
+});

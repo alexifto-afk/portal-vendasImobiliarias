@@ -151,3 +151,7 @@ O painel administrativo tem uma aba **Teste Mercado Pago**, com credencial exclu
 ## Qualidade da integração de pagamentos
 
 Veja [QUALIDADE-MERCADO-PAGO.md](QUALIDADE-MERCADO-PAGO.md) para os campos adicionais, o uso do SDK oficial e o procedimento de nova medição após homologação. Dados sintéticos ficam restritos ao teste; a cobrança comercial solicita dados reais do pagador.
+
+## Retornos, webhooks e política 3DS
+
+Veja [RETORNOS-WEBHOOKS-3DS.md](RETORNOS-WEBHOOKS-3DS.md) para implantar os endpoints de notificação, configurar as assinaturas secretas por ambiente e realizar nova medição. O fluxo Orders de teste recebe Back URLs HTTPS e liability shift obrigatório; a cobrança comercial por Preferences continua compatível com seu próprio schema. Deep links de aplicativo mobile exigem um aplicativo que este projeto ainda não possui.

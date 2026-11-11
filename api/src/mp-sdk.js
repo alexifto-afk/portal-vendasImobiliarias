@@ -23,6 +23,8 @@ export async function requestMercadoPago(token, path, options = {}) {
     });
   if (path === "/checkout/preferences")
     return new Preference(config).create({ body: JSON.parse(options.body) });
+  if (/^\/v1\/payments\/\d+$/.test(path))
+    return new Payment(config).get({ id: path.split("/").pop() });
   if (path.startsWith("/v1/payments/search?"))
     return new Payment(config).search({
       options: Object.fromEntries(new URLSearchParams(path.split("?")[1])),

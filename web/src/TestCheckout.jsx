@@ -3,6 +3,7 @@ import { ArrowUpRight, Copy, RefreshCw } from "lucide-react";
 const pendingKey = "portal-mp-test-attempt";
 export default function TestCheckout({ request }) {
   const [data, setData] = useState(null),
+    [webhooks, setWebhooks] = useState(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [message, setMessage] = useState("");
@@ -10,6 +11,11 @@ export default function TestCheckout({ request }) {
     request("/admin/test-checkout")
       .then(setData)
       .catch((e) => setError(e.message));
+  }, []);
+  useEffect(() => {
+    request("/admin/webhooks")
+      .then(setWebhooks)
+      .catch(() => {});
   }, []);
   const create = async () => {
     setBusy(true);
@@ -102,6 +108,41 @@ export default function TestCheckout({ request }) {
           >
             {busy ? "Aguarde…" : "Criar compra de teste"}
           </button>
+          {webhooks && (
+            <details className="notice">
+              <summary>
+                Recebimento de webhooks ·{" "}
+                {webhooks.testConfigured
+                  ? "segredo de teste configurado"
+                  : "aguardando configuração no Render"}
+              </summary>
+              <p>
+                Para o teste, configure a URL /api/webhooks/mercadopago/test no
+                Developers com o evento Order (Mercado Pago). A assinatura
+                secreta fica em MP_TEST_WEBHOOK_SECRET no Render.
+              </p>
+              <button
+                type="button"
+                className="outline small"
+                onClick={async () => {
+                  try {
+                    setWebhooks(await request("/admin/webhooks"));
+                  } catch (e) {
+                    setError(e.message);
+                  }
+                }}
+              >
+                Atualizar notificações
+              </button>
+              {webhooks.events.map((event, index) => (
+                <p key={index}>
+                  {event.mode} · {event.resourceId} · {event.result} ·{" "}
+                  {event.status || "sem status"} ·{" "}
+                  {new Date(event.receivedAt).toLocaleString("pt-BR")}
+                </p>
+              ))}
+            </details>
+          )}
           {data.orders.map((order) => (
             <article className="test-order" key={order.orderId}>
               <h3>
