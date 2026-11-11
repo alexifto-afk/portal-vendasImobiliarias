@@ -119,6 +119,9 @@ export function registerTestCheckoutRoutes(
         diagnostic.codes.length
           ? `códigos: ${diagnostic.codes.join(", ")}`
           : null,
+        diagnostic.fields.length
+          ? `campos: ${diagnostic.fields.join(", ")}`
+          : null,
       ]
         .filter(Boolean)
         .join("; ");

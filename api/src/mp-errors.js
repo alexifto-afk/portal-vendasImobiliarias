@@ -26,8 +26,29 @@ export function safeProviderError(error) {
       Array.isArray(values) ? values.slice(0, 10).map((v) => v?.code) : [],
     ),
   ];
+  const field = (value) => {
+    if (Array.isArray(value)) value = value.join(".");
+    return typeof value === "string" &&
+      /^(?:payer|items|additional_info|config|type|processing_mode|total_amount|external_reference)(?:[.][a-zA-Z_][a-zA-Z0-9_]*|\[\d{1,3}\]|[.]\d{1,3})*$/.test(
+        value,
+      ) &&
+      value.length <= 180
+      ? value
+      : null;
+  };
+  const fields = [error?.causes, error?.cause, error?.errors]
+    .flatMap((values) =>
+      Array.isArray(values)
+        ? values
+            .slice(0, 10)
+            .flatMap((item) => [item?.field, item?.property, item?.path])
+        : [],
+    )
+    .map(field)
+    .filter(Boolean);
   return {
     httpStatus,
+    fields: [...new Set(fields)].slice(0, 10),
     codes: [...new Set(raw.map(code).filter(Boolean))].slice(0, 10),
   };
 }

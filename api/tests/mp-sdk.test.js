@@ -49,3 +49,51 @@ test("SDK oficial envia autenticação isolada, idempotência e metadados de ide
     globalThis.fetch = original;
   }
 });
+
+test("patch do SDK preserva erros de Orders HTTP 400 para sanitização sem repetir o POST", async () => {
+  const { safeProviderError } = await import("../src/mp-errors.js");
+  const original = globalThis.fetch;
+  let count = 0;
+  globalThis.fetch = async () => {
+    count++;
+    return new Response(
+      JSON.stringify({
+        errors: [
+          {
+            code: "invalid_value",
+            field: "additional_info.payer.authentication_type",
+            message: "not-public-secret",
+            value: "private@example.com",
+          },
+        ],
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  };
+  try {
+    await assert.rejects(
+      () =>
+        requestMercadoPago("test-token", "/v1/orders", {
+          method: "POST",
+          headers: {
+            "X-Idempotency-Key": "12345678-1234-4234-8234-123456789abc",
+          },
+          body: "{}",
+        }),
+      (error) => {
+        const diagnostic = safeProviderError(error);
+        assert.equal(diagnostic.httpStatus, 400);
+        assert.deepEqual(diagnostic.codes, ["invalid_value"]);
+        assert.deepEqual(diagnostic.fields, [
+          "additional_info.payer.authentication_type",
+        ]);
+        assert.ok(!JSON.stringify(diagnostic).includes("not-public-secret"));
+        assert.ok(!JSON.stringify(diagnostic).includes("@"));
+        return true;
+      },
+    );
+    assert.equal(count, 1);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
