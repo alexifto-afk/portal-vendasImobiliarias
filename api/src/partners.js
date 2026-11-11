@@ -57,7 +57,7 @@ export function couponPrice(coupon, basePrice, plan, userId, now = new Date()) {
     );
   return {
     code: coupon.code,
-    version: new Date(coupon.createdAt).toISOString(),
+    version: new Date(coupon.termsUpdatedAt || coupon.createdAt).toISOString(),
     originalPrice: basePrice,
     discount: coupon.discountCents,
     finalPrice,
@@ -288,7 +288,7 @@ export function registerPartnerRoutes(
         }),
       ]);
       const counts = await db.listing.groupBy({
-        by: ["couponCode"],
+        by: ["couponId"],
         where: {
           couponId: { in: coupons.map((c) => c.id) },
           paidAt: { not: null },
@@ -331,8 +331,7 @@ export function registerPartnerRoutes(
           holdDays: c.holdDays,
           expiresAt: c.expiresAt,
           plans: c.plans,
-          paidAds:
-            counts.find((n) => n.couponCode === c.code)?._count._all || 0,
+          paidAds: counts.find((n) => n.couponId === c.id)?._count._all || 0,
         })),
       });
     }),
@@ -375,10 +374,14 @@ export function registerPartnerRoutes(
           include: {
             user: { select: { name: true, email: true } },
             entries: { include: { payout: { select: { status: true } } } },
+            _count: { select: { coupons: true, entries: true, payouts: true } },
           },
           orderBy: { createdAt: "desc" },
         }),
-        db.coupon.findMany({ orderBy: { createdAt: "desc" } }),
+        db.coupon.findMany({
+          include: { _count: { select: { listings: true } } },
+          orderBy: { createdAt: "desc" },
+        }),
         db.partnerPayout.findMany({
           include: {
             partner: {
@@ -437,20 +440,30 @@ export function registerPartnerRoutes(
     admin,
     wrap(async (q, r) => {
       const input = z
-        .object({ active: z.boolean(), minWithdrawal: cents })
+        .object({
+          active: z.boolean(),
+          minWithdrawal: cents,
+          name: z.string().trim().min(3).max(100).optional(),
+        })
         .parse(q.body);
       r.json(
         await moneyTransaction(db, async (tx) => {
+          const { name, ...settings } = input;
           const updated = await tx.partner.update({
             where: { id: q.params.id },
-            data: input,
+            data: settings,
           });
+          if (name)
+            await tx.user.update({
+              where: { id: updated.userId },
+              data: { name },
+            });
           await audit(
             tx,
             q.user.id,
             "PARTNER_UPDATED",
             updated.id,
-            JSON.stringify(input),
+            "Dados e configuração do parceiro atualizados",
           );
           return updated;
         }),
@@ -489,29 +502,137 @@ export function registerPartnerRoutes(
       );
     }),
   );
-  // Financial terms are immutable. Disable and create a new code to change them.
   app.put(
     "/api/admin/coupons/:id",
     auth,
     admin,
     wrap(async (q, r) => {
-      const { active } = z.object({ active: z.boolean() }).parse(q.body);
+      const input = couponInput
+        .omit({ partnerId: true })
+        .partial()
+        .extend({ expectedVersion: z.string().datetime().optional() })
+        .strict()
+        .parse(q.body);
+      if (!Object.keys(input).some((key) => key !== "expectedVersion"))
+        throw fail(400, "Informe os campos para editar.");
+      const { config } = await getCommercial();
       r.json(
         await moneyTransaction(db, async (tx) => {
-          const c = await tx.coupon.update({
+          const current = await tx.coupon.findUnique({
             where: { id: q.params.id },
-            data: { active },
+            include: { _count: { select: { listings: true } } },
+          });
+          if (!current) throw fail(404, "Cupom não encontrado.");
+          const { expectedVersion, ...changes } = input;
+          const editsTerms = Object.keys(changes).some(
+            (key) => key !== "active",
+          );
+          if (
+            editsTerms &&
+            expectedVersion !== current.termsUpdatedAt.toISOString()
+          )
+            throw fail(
+              409,
+              "Este cupom foi alterado. Atualize a tabela e abra a edição novamente.",
+            );
+          if (
+            changes.code &&
+            changes.code !== current.code &&
+            (current.reservations || current._count.listings)
+          )
+            throw fail(
+              409,
+              "O código de um cupom utilizado é preservado no histórico. Crie outro código se necessário.",
+            );
+          const candidate = { ...current, ...changes };
+          if (changes.expiresAt && new Date(changes.expiresAt) <= new Date())
+            throw fail(400, "Informe uma validade futura.");
+          if (
+            candidate.maxUses !== null &&
+            candidate.maxUses < current.reservations
+          )
+            throw fail(
+              400,
+              "O limite não pode ser menor que as utilizações já reservadas.",
+            );
+          if (editsTerms || changes.active === true)
+            for (const plan of candidate.plans) {
+              const price =
+                plan === "BASIC" ? config.adPrice : config.featuredPrice;
+              if (price - candidate.discountCents < candidate.rewardCents)
+                throw fail(
+                  400,
+                  "Desconto e crédito juntos não podem superar o preço do plano.",
+                );
+            }
+          const c = await tx.coupon.update({
+            where: { id: current.id },
+            data: {
+              ...changes,
+              ...(changes.expiresAt
+                ? { expiresAt: new Date(changes.expiresAt) }
+                : {}),
+              termsUpdatedAt: new Date(
+                Math.max(Date.now(), current.termsUpdatedAt.getTime() + 1),
+              ),
+            },
           });
           await audit(
             tx,
             q.user.id,
-            "COUPON_STATUS_UPDATED",
+            "COUPON_UPDATED",
             c.id,
-            String(active),
+            Object.keys(changes).join(","),
           );
           return c;
         }),
       );
+    }),
+  );
+  app.delete(
+    "/api/admin/coupons/:id",
+    auth,
+    admin,
+    wrap(async (q, r) => {
+      await moneyTransaction(db, async (tx) => {
+        const c = await tx.coupon.findUnique({
+          where: { id: q.params.id },
+          include: { _count: { select: { listings: true } } },
+        });
+        if (!c) throw fail(404, "Cupom não encontrado.");
+        if (c.reservations || c._count.listings)
+          throw fail(
+            409,
+            "Este cupom tem utilizações. Desative-o para preservar o histórico.",
+          );
+        await tx.coupon.delete({ where: { id: c.id } });
+        await audit(tx, q.user.id, "COUPON_DELETED", c.id);
+      });
+      r.json({ ok: true });
+    }),
+  );
+  app.delete(
+    "/api/admin/partners/:id",
+    auth,
+    admin,
+    wrap(async (q, r) => {
+      await moneyTransaction(db, async (tx) => {
+        const p = await tx.partner.findUnique({
+          where: { id: q.params.id },
+          include: {
+            _count: { select: { coupons: true, entries: true, payouts: true } },
+          },
+        });
+        if (!p) throw fail(404, "Parceiro não encontrado.");
+        if (Object.values(p._count).some(Boolean))
+          throw fail(
+            409,
+            "Este parceiro possui cupons ou histórico financeiro. Desative-o ou exclua primeiro os cupons sem uso.",
+          );
+        await tx.partner.delete({ where: { id: p.id } });
+        await audit(tx, q.user.id, "PARTNER_DELETED", p.id);
+      });
+      r.json({ ok: true });
     }),
   );
   app.post(

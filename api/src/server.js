@@ -1,4 +1,9 @@
 import {
+  registrationSchema,
+  sessionUser,
+  registerProfileRoutes,
+} from "./user-profile.js";
+import {
   registerPartnerRoutes,
   reserveCoupon,
   moneyTransaction,
@@ -149,32 +154,20 @@ app.post(
   "/api/auth/register",
   authLimit,
   wrap(async (q, r) => {
-    const d = z
-      .object({
-        name: z.string().trim().min(3).max(100),
-        email: z
-          .string()
-          .email()
-          .max(254)
-          .transform((x) => x.toLowerCase()),
-        password: z.string().min(12).max(128),
-      })
-      .parse(q.body);
+    const d = registrationSchema.parse(q.body);
     const u = await db.user.create({
       data: {
         name: d.name,
+        cpf: d.cpf,
+        phone: d.phone,
+        address: d.address,
         email: d.email,
         passwordHash: await bcrypt.hash(d.password, 12),
       },
     });
     r.status(201).json({
       token: tokenFor(u),
-      user: {
-        id: u.id,
-        name: u.name,
-        role: u.role,
-        partner: u.partner || null,
-      },
+      user: sessionUser(u),
     });
   }),
 );
@@ -199,16 +192,11 @@ app.post(
       throw fail(401, "E-mail ou senha inválidos.");
     r.json({
       token: tokenFor(u),
-      user: {
-        id: u.id,
-        name: u.name,
-        role: u.role,
-        partner: u.partner || null,
-      },
+      user: sessionUser(u),
     });
   }),
 );
-app.get("/api/me", auth, (q, r) => r.json(q.user));
+registerProfileRoutes(app, { db, auth, wrap, audit });
 app.get(
   "/api/listings",
   wrap(async (q, r) => {
@@ -633,8 +621,16 @@ app.use((err, q, r, _next) => {
         .map((x) => `${x.path.join(".")}: ${x.message}`)
         .join("; "),
     });
-  if (err.code === "P2002")
-    return r.status(409).json({ error: "Registro já existente." });
+  if (err.code === "P2002") {
+    const fields = Array.isArray(err.meta?.target) ? err.meta.target : [];
+    return r.status(409).json({
+      error: fields.includes("cpf")
+        ? "Este CPF já está cadastrado. Entre na conta existente."
+        : fields.includes("email")
+          ? "Este e-mail já está cadastrado. Entre na conta existente."
+          : "Registro já existente.",
+    });
+  }
   if (err.code === "P2025")
     return r.status(404).json({ error: "Registro não encontrado." });
   if (err.status) return r.status(err.status).json({ error: err.message });

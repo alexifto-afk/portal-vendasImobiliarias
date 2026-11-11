@@ -1,3 +1,5 @@
+import Tabs from "./Tabs.jsx";
+import Profile, { IdentityFields } from "./Profile.jsx";
 import { CouponField, PartnerDashboard, AdminPartners } from "./Partners.jsx";
 import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
@@ -172,6 +174,14 @@ function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const announce = () => (user ? go("owner") : setModal("auth"));
+  const logout = () => {
+    sessionStorage.removeItem("portal-token");
+    accessToken = "";
+    setUser(null);
+    setModal(null);
+    setSelected(null);
+    go("home");
+  };
   const source = offline ? demo : listings,
     visible = findListings(source, filters, sort);
   const hasFilters = Object.values(filters).some(Boolean);
@@ -221,21 +231,12 @@ function App() {
           </a>
         </nav>
         <div className="header-actions">
-          {user ? (
+          {!user && (
             <button
-              className="text-button"
-              onClick={() => go(user.role === "ADMIN" ? "admin" : "owner")}
+              className="text-button login-button"
+              onClick={() => setModal("auth")}
             >
-              Meu painel
-            </button>
-          ) : (
-            <button className="text-button" onClick={() => setModal("auth")}>
               Entrar
-            </button>
-          )}
-          {user?.partner && (
-            <button className="text-button" onClick={() => go("partner")}>
-              Área do parceiro
             </button>
           )}
           <button className="primary small" onClick={announce}>
@@ -250,6 +251,45 @@ function App() {
           </button>
         </div>
       </header>
+      {user && (
+        <section className="account-bar" aria-label="Sua sessão">
+          <div className="account-identity">
+            <span className="account-avatar" aria-hidden="true">
+              {user.name?.trim().charAt(0).toUpperCase()}
+            </span>
+            <div>
+              <small>Você está conectado</small>
+              <strong title={user.name}>{user.name}</strong>
+            </div>
+          </div>
+          <div className="account-links">
+            <button
+              className={view === "admin" || view === "owner" ? "selected" : ""}
+              onClick={() => go(user.role === "ADMIN" ? "admin" : "owner")}
+            >
+              Meu painel
+            </button>
+            {user.partner && (
+              <button
+                className={view === "partner" ? "selected" : ""}
+                onClick={() => go("partner")}
+              >
+                Área do parceiro
+              </button>
+            )}
+            <button
+              className={view === "profile" ? "selected" : ""}
+              onClick={() => go("profile")}
+            >
+              Meu perfil
+            </button>
+            <button className="logout-button" onClick={logout}>
+              <LogOut size={16} />
+              Sair
+            </button>
+          </div>
+        </section>
+      )}
       {paymentReturnMessage(new URLSearchParams(window.location.search)) && (
         <div className="notice" role="status">
           {paymentReturnMessage(new URLSearchParams(window.location.search))}
@@ -635,12 +675,26 @@ function App() {
             </section>
           </main>
         </>
+      ) : view === "profile" ? (
+        <Profile
+          request={api}
+          onSaved={(updated) =>
+            setUser((current) =>
+              accessToken && current?.id === updated.id ? updated : current,
+            )
+          }
+        />
       ) : view === "partner" ? (
         <PartnerDashboard request={api} />
       ) : view === "owner" ? (
         <Owner config={config} setError={setError} />
       ) : (
-        <Admin config={config} setError={setError} onConfigChange={setConfig} />
+        <Admin
+          config={config}
+          setError={setError}
+          onConfigChange={setConfig}
+          userName={user?.name}
+        />
       )}
       <footer>
         <a className="brand" href="#" onClick={() => go("home")}>
@@ -663,18 +717,6 @@ function App() {
             Privacidade e condições
           </button>
           <p>© {new Date().getFullYear()} LP Imóveis</p>
-          {user && (
-            <button
-              onClick={() => {
-                accessToken = "";
-                sessionStorage.removeItem("portal-token");
-                setUser(null);
-                go("home");
-              }}
-            >
-              <LogOut size={13} /> Sair da conta
-            </button>
-          )}
         </div>
       </footer>
       {modal && (
@@ -716,11 +758,13 @@ function App() {
                 <div className="kicker">TRANSPARÊNCIA</div>
                 <h2>Privacidade e condições</h2>
                 <p>
-                  Os dados de cadastro são utilizados para divulgar seu imóvel e
-                  administrar a contratação. Nome e telefone de interessados são
-                  utilizados por Lourival para atender à solicitação de contato
-                  e registrar visitas e propostas. Dados do proprietário e
-                  endereço completo não aparecem na consulta pública da API.
+                  Nome, CPF, celular e endereço do cadastro são utilizados para
+                  administrar sua conta, a contratação e o atendimento. Os dados
+                  do imóvel são utilizados na divulgação. Nome e telefone de
+                  interessados são utilizados por Lourival para atender à
+                  solicitação de contato e registrar visitas e propostas. Dados
+                  do proprietário e endereço completo não aparecem na consulta
+                  pública da API.
                 </p>
                 <p>
                   O preço do anúncio remunera a divulgação pelo prazo contratado
@@ -778,13 +822,13 @@ function Auth({ onSuccess }) {
         }}
       >
         {register && (
-          <Field
-            label="Seu nome"
-            name="name"
-            required
-            minLength={3}
-            autoComplete="name"
-          />
+          <>
+            <IdentityFields />
+            <p className="form-help">
+              Esses dados compõem seu cadastro e não serão exibidos nos anúncios
+              públicos.
+            </p>
+          </>
         )}
         <Field
           label="E-mail"
@@ -1384,7 +1428,7 @@ function Owner({ config, setError }) {
     </main>
   );
 }
-function Admin({ config, setError, onConfigChange }) {
+function Admin({ config, setError, onConfigChange, userName }) {
   const [items, setItems] = useState([]),
     [leads, setLeads] = useState([]),
     [logs, setLogs] = useState([]),
@@ -1418,7 +1462,7 @@ function Admin({ config, setError, onConfigChange }) {
   return (
     <main className="container dashboard">
       <div className="kicker">PAINEL DO CORRETOR</div>
-      <h1>Olá, Lourival.</h1>
+      <h1>Olá, {userName?.trim().split(/\s+/)[0] || "Lourival"}.</h1>
       <p>Da primeira conversa ao próximo negócio.</p>
       <div className="metrics">
         <div>
@@ -1434,178 +1478,186 @@ function Admin({ config, setError, onConfigChange }) {
           <strong>{money(commissions)}</strong>
         </div>
       </div>
-      <div className="category-row">
-        {[
+      <Tabs
+        id="admin"
+        label="Menu do administrador"
+        value={tab}
+        onChange={setTab}
+        tabs={[
           ["listings", "Anúncios"],
           ["leads", "Contatos e visitas"],
           ["audit", "Histórico"],
           ["settings", "Configurações"],
           ["partners", "Parceiros e cupons"],
           ["test-checkout", "Teste Mercado Pago"],
-        ].map(([v, l]) => (
-          <button
-            key={v}
-            className={tab === v ? "selected" : ""}
-            onClick={() => setTab(v)}
-          >
-            {l}
-          </button>
-        ))}
-      </div>
-      {tab === "partners" ? (
-        <AdminPartners request={api} />
-      ) : tab === "test-checkout" ? (
-        <TestCheckout request={api} />
-      ) : tab === "settings" ? (
-        <CommercialSettings request={api} onConfigChange={onConfigChange} />
-      ) : tab === "listings" ? (
-        items.map((l) => (
-          <article className="form-panel" key={l.id}>
-            <div className="section-heading">
-              <div>
-                <h3>{l.title}</h3>
-                <p>
-                  {l.owner.name} · {l.owner.email} · {l.ownerPhone}
-                </p>
-                <p>Endereço privado: {l.privateAddress}</p>
-                <p>
-                  {statusNames[l.status]} ·{" "}
-                  {l.affiliateVoidedAt
-                    ? "Pagamento estornado"
-                    : l.paidAt
-                      ? "Pagamento confirmado"
-                      : "Pagamento pendente"}{" "}
-                  · {money(l.adPrice)}
-                </p>
+        ]}
+      />
+      <section
+        role="tabpanel"
+        id={`admin-panel-${tab}`}
+        aria-labelledby={`admin-tab-${tab}`}
+        tabIndex={0}
+      >
+        {tab === "partners" ? (
+          <AdminPartners request={api} />
+        ) : tab === "test-checkout" ? (
+          <TestCheckout request={api} />
+        ) : tab === "settings" ? (
+          <CommercialSettings request={api} onConfigChange={onConfigChange} />
+        ) : tab === "listings" ? (
+          items.map((l) => (
+            <article className="form-panel" key={l.id}>
+              <div className="section-heading">
+                <div>
+                  <h3>{l.title}</h3>
+                  <p>
+                    {l.owner.name} · {l.owner.email} · {l.ownerPhone}
+                  </p>
+                  <p>Endereço privado: {l.privateAddress}</p>
+                  <p>
+                    {statusNames[l.status]} ·{" "}
+                    {l.affiliateVoidedAt
+                      ? "Pagamento estornado"
+                      : l.paidAt
+                        ? "Pagamento confirmado"
+                        : "Pagamento pendente"}{" "}
+                    · {money(l.adPrice)}
+                  </p>
+                </div>
+                <div className="action-stack">
+                  {l.status === "PENDING" && (
+                    <button
+                      className="outline small"
+                      disabled={busy}
+                      onClick={() =>
+                        run(async () => {
+                          const d = await api(
+                            `/owner/listings/${l.id}/sync-payment`,
+                            { method: "POST" },
+                          );
+                          if (!d.paid)
+                            throw Error(
+                              "Nenhum pagamento aprovado encontrado.",
+                            );
+                        })
+                      }
+                    >
+                      Consultar pagamento
+                    </button>
+                  )}
+                  {["PENDING", "REJECTED", "PUBLISHED"].includes(l.status) && (
+                    <>
+                      <button
+                        disabled={busy || !l.paidAt}
+                        className="primary small"
+                        onClick={() =>
+                          run(() =>
+                            api(`/admin/listings/${l.id}/review`, {
+                              method: "POST",
+                              body: { approve: true },
+                            }),
+                          )
+                        }
+                      >
+                        Aprovar publicação
+                      </button>
+                      <button
+                        disabled={busy}
+                        className="outline small"
+                        onClick={() =>
+                          run(() =>
+                            api(`/admin/listings/${l.id}/review`, {
+                              method: "POST",
+                              body: { approve: false },
+                            }),
+                          )
+                        }
+                      >
+                        Retirar / reprovar
+                      </button>
+                    </>
+                  )}
+                  {l.status === "PUBLISHED" && (
+                    <button
+                      className="primary small"
+                      onClick={() => setDeal(l)}
+                    >
+                      Registrar fechamento
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="action-stack">
-                {l.status === "PENDING" && (
+              <details>
+                <summary>Descrição, fotos e aceite para revisão</summary>
+                <p className="description">{l.description}</p>
+                <div className="gallery">
+                  {l.images.map((src) => (
+                    <div key={src}>
+                      <Photo src={src} alt="Imagem para revisão" />
+                    </div>
+                  ))}
+                </div>
+                <p>
+                  Aceite: {new Date(l.acceptedAt).toLocaleString("pt-BR")} ·{" "}
+                  {l.termsVersion}
+                </p>
+                <p>{l.termsText}</p>
+                <p>
+                  Confira e remova contatos ou dados privados da publicação:
+                  reprove o cadastro e peça novo envio quando necessário.
+                </p>
+              </details>
+              {l.deal && (
+                <div className="deal-box">
+                  <p>
+                    Fechamento: {money(l.deal.finalPrice)} · Comissão:{" "}
+                    {money(l.deal.commission)} ·{" "}
+                    {l.deal.commissionPaid ? "Recebida" : "A receber"}
+                  </p>
                   <button
-                    className="outline small"
                     disabled={busy}
+                    className="outline small"
                     onClick={() =>
-                      run(async () => {
-                        const d = await api(
-                          `/owner/listings/${l.id}/sync-payment`,
-                          { method: "POST" },
-                        );
-                        if (!d.paid)
-                          throw Error("Nenhum pagamento aprovado encontrado.");
-                      })
+                      run(() =>
+                        api(`/admin/deals/${l.deal.id}/commission`, {
+                          method: "PATCH",
+                          body: { paid: !l.deal.commissionPaid },
+                        }),
+                      )
                     }
                   >
-                    Consultar pagamento
+                    {l.deal.commissionPaid
+                      ? "Desmarcar recebimento"
+                      : "Confirmar recebimento após conferir o crédito"}
                   </button>
-                )}
-                {["PENDING", "REJECTED", "PUBLISHED"].includes(l.status) && (
-                  <>
-                    <button
-                      disabled={busy || !l.paidAt}
-                      className="primary small"
-                      onClick={() =>
-                        run(() =>
-                          api(`/admin/listings/${l.id}/review`, {
-                            method: "POST",
-                            body: { approve: true },
-                          }),
-                        )
-                      }
-                    >
-                      Aprovar publicação
-                    </button>
-                    <button
-                      disabled={busy}
-                      className="outline small"
-                      onClick={() =>
-                        run(() =>
-                          api(`/admin/listings/${l.id}/review`, {
-                            method: "POST",
-                            body: { approve: false },
-                          }),
-                        )
-                      }
-                    >
-                      Retirar / reprovar
-                    </button>
-                  </>
-                )}
-                {l.status === "PUBLISHED" && (
-                  <button className="primary small" onClick={() => setDeal(l)}>
-                    Registrar fechamento
+                  <button
+                    className="text-button"
+                    onClick={() => setDeal({ ...l, preview: true })}
+                  >
+                    Ver minuta para impressão
                   </button>
-                )}
-              </div>
-            </div>
-            <details>
-              <summary>Descrição, fotos e aceite para revisão</summary>
-              <p className="description">{l.description}</p>
-              <div className="gallery">
-                {l.images.map((src) => (
-                  <div key={src}>
-                    <Photo src={src} alt="Imagem para revisão" />
-                  </div>
-                ))}
-              </div>
-              <p>
-                Aceite: {new Date(l.acceptedAt).toLocaleString("pt-BR")} ·{" "}
-                {l.termsVersion}
+                </div>
+              )}
+            </article>
+          ))
+        ) : tab === "leads" ? (
+          leads.map((l) => (
+            <LeadEditor key={l.id} lead={l} busy={busy} run={run} />
+          ))
+        ) : (
+          <div className="form-panel">
+            {logs.map((l) => (
+              <p key={l.id}>
+                <small>{new Date(l.createdAt).toLocaleString("pt-BR")}</small> ·{" "}
+                {l.action} · {l.entityId} · {l.detail}
               </p>
-              <p>{l.termsText}</p>
-              <p>
-                Confira e remova contatos ou dados privados da publicação:
-                reprove o cadastro e peça novo envio quando necessário.
-              </p>
-            </details>
-            {l.deal && (
-              <div className="deal-box">
-                <p>
-                  Fechamento: {money(l.deal.finalPrice)} · Comissão:{" "}
-                  {money(l.deal.commission)} ·{" "}
-                  {l.deal.commissionPaid ? "Recebida" : "A receber"}
-                </p>
-                <button
-                  disabled={busy}
-                  className="outline small"
-                  onClick={() =>
-                    run(() =>
-                      api(`/admin/deals/${l.deal.id}/commission`, {
-                        method: "PATCH",
-                        body: { paid: !l.deal.commissionPaid },
-                      }),
-                    )
-                  }
-                >
-                  {l.deal.commissionPaid
-                    ? "Desmarcar recebimento"
-                    : "Confirmar recebimento após conferir o crédito"}
-                </button>
-                <button
-                  className="text-button"
-                  onClick={() => setDeal({ ...l, preview: true })}
-                >
-                  Ver minuta para impressão
-                </button>
-              </div>
-            )}
-          </article>
-        ))
-      ) : tab === "leads" ? (
-        leads.map((l) => (
-          <LeadEditor key={l.id} lead={l} busy={busy} run={run} />
-        ))
-      ) : (
-        <div className="form-panel">
-          {logs.map((l) => (
-            <p key={l.id}>
-              <small>{new Date(l.createdAt).toLocaleString("pt-BR")}</small> ·{" "}
-              {l.action} · {l.entityId} · {l.detail}
-            </p>
-          ))}
-        </div>
-      )}
-      {!items.length && tab === "listings" && (
-        <div className="empty">Os anúncios recebidos aparecerão aqui.</div>
-      )}
+            ))}
+          </div>
+        )}
+        {!items.length && tab === "listings" && (
+          <div className="empty">Os anúncios recebidos aparecerão aqui.</div>
+        )}
+      </section>
       {deal && (
         <div className="modal-shade">
           <section className="modal">
