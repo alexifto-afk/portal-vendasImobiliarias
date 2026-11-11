@@ -12,11 +12,14 @@ Esta atualização adiciona indicação por **cupom**, sem depender de link ou c
 
 ## Cadastrar um blogueiro
 
-1. O parceiro cria uma conta comum em **Entrar → Quero criar uma conta** e escolhe sua própria senha. Não precisa cadastrar imóvel nem comprar anúncio.
-2. Como administrador, entre em **Meu painel → Parceiros e cupons**.
-3. Em **Novo parceiro**, informe o e-mail exato dessa conta e o saque mínimo em reais. Salve.
-4. Peça ao parceiro para sair e entrar novamente (ou atualizar a página). Aparecerá **Área do parceiro** na faixa de sessão no topo.
-5. Desativar uma parceria bloqueia novas utilizações de cupons e novas solicitações de saque, mas preserva o extrato, os créditos anteriores e saques já solicitados. Para liberar saldo de uma parceria desativada, regularize a parceria no painel; não remova seus dados.
+1. Como administrador, entre em **Meu painel → Parceiros e cupons → Novo parceiro**.
+2. Em **Criar login e senha**, preencha os dados pessoais, e-mail de acesso, senha e confirmação, além do saque mínimo.
+3. Salve em **Cadastrar parceiro e criar acesso**. A conta já é criada com nível Parceiro; ele não precisa se cadastrar antes.
+4. Informe ao parceiro o e-mail e a senha definidos. Ao entrar no portal, ele será direcionado ao próprio painel.
+5. Se a conta já existe, escolha **Vincular conta existente**: preserva a senha e as permissões anteriores.
+6. Desativar uma parceria bloqueia novas utilizações de cupons e novas solicitações de saque, mas preserva o extrato, os créditos anteriores e saques já solicitados. Para liberar saldo de uma parceria desativada, regularize a parceria no painel; não remova seus dados.
+
+Veja [ACESSO-DO-PARCEIRO.md](ACESSO-DO-PARCEIRO.md) para os níveis de acesso e os detalhes de login.
 
 ## Criar o cupom
 

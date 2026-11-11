@@ -431,3 +431,134 @@ test("exclusão bloqueia histórico e remove cupom/parceria sem uso mantendo a c
   );
   assert.ok(await db.user.findUnique({ where: { id: users.legacy.id } }));
 });
+
+test("administrador cria parceiro e conta PARTNER atomicamente com senha protegida", async () => {
+  const input = {
+    mode: "CREATE",
+    ...identity(),
+    email: `${prefix}-direct-partner@example.com`,
+    password: "local-partner-password-123",
+    minWithdrawal: 1000,
+  };
+  assert.equal(
+    (await request("/admin/partners", { who: "owner", body: input })).status,
+    403,
+  );
+  assert.equal(
+    (await request("/admin/partners", { who: null, body: input })).status,
+    401,
+  );
+  const result = await request("/admin/partners", { body: input });
+  assert.equal(result.status, 201, JSON.stringify(result.data));
+  assert.equal(result.data.user.role, "PARTNER");
+  assert.ok(!JSON.stringify(result.data).includes(input.password));
+  assert.equal(result.data.user.cpf, undefined);
+  const user = await db.user.findUnique({
+    where: { email: input.email },
+    include: { partner: true },
+  });
+  assert.equal(user.role, "PARTNER");
+  assert.equal(user.partner.id, result.data.id);
+  assert.equal(await bcrypt.compare(input.password, user.passwordHash), true);
+  assert.notEqual(user.passwordHash, input.password);
+  const audit = JSON.stringify(
+    await db.audit.findMany({ where: { entityId: result.data.id } }),
+  );
+  assert.ok(!audit.includes(input.password));
+  assert.ok(!audit.includes(input.cpf));
+  const login = await request("/auth/login", {
+    who: null,
+    body: { email: input.email, password: input.password },
+  });
+  assert.equal(login.status, 200);
+  assert.equal(login.data.user.role, "PARTNER");
+  assert.equal(login.data.user.partner.active, true);
+  const token = login.data.token;
+  const dashboard = await request("/partner/dashboard", { token });
+  assert.equal(dashboard.status, 200);
+  assert.equal(dashboard.data.entries.length, 0);
+  assert.equal((await request("/me", { token })).status, 200);
+  for (const path of ["/admin/partners", "/admin/listings", "/owner/listings"])
+    assert.equal((await request(path, { token })).status, 403);
+  for (const path of [
+    "/owner/listings",
+    `/owner/listings/test/checkout`,
+    `/owner/listings/test/sync-payment`,
+    "/uploads",
+  ])
+    assert.equal((await request(path, { token, body: {} })).status, 403);
+  assert.equal(
+    (await request("/uploads/test", { token, method: "DELETE" })).status,
+    403,
+  );
+  const fakeRoleToken = jwt.sign({ sub: user.id, role: "ADMIN" }, secret);
+  assert.equal(
+    (await request("/admin/partners", { token: fakeRoleToken })).status,
+    403,
+  );
+});
+test("criação não substitui senha de conta existente e conflito de CPF não deixa conta órfã", async () => {
+  const existing = await db.user.findUnique({ where: { id: users.owner.id } });
+  const input = {
+    mode: "CREATE",
+    ...identity(),
+    email: existing.email,
+    password: "different-password-12345",
+    minWithdrawal: 1000,
+  };
+  assert.equal((await request("/admin/partners", { body: input })).status, 409);
+  const unchanged = await db.user.findUnique({ where: { id: existing.id } });
+  assert.equal(unchanged.passwordHash, existing.passwordHash);
+  assert.equal(unchanged.role, existing.role);
+  const email = `${prefix}-cpf-conflict@example.com`;
+  assert.equal(
+    (
+      await request("/admin/partners", {
+        body: { ...input, email, cpf: existing.cpf },
+      })
+    ).status,
+    409,
+  );
+  assert.equal(await db.user.findUnique({ where: { email } }), null);
+  assert.equal(
+    (
+      await request("/admin/partners", {
+        body: {
+          mode: "CREATE",
+          email,
+          password: "different-password-12345",
+          minWithdrawal: 1000,
+        },
+      })
+    ).status,
+    400,
+  );
+});
+test("vincular conta existente preserva senha, anúncios e permissões anteriores", async () => {
+  const original = await db.user.findUnique({ where: { id: users.owner.id } });
+  const result = await request("/admin/partners", {
+    body: { mode: "EXISTING", email: original.email, minWithdrawal: 500 },
+  });
+  assert.equal(result.status, 201);
+  assert.equal(result.data.user.role, "OWNER");
+  const user = await db.user.findUnique({ where: { id: original.id } });
+  assert.equal(user.passwordHash, original.passwordHash);
+  assert.equal(user.role, "OWNER");
+  assert.equal(
+    (await request("/owner/listings", { who: "owner" })).status,
+    200,
+  );
+  assert.equal(
+    (
+      await request("/admin/partners", {
+        body: {
+          mode: "EXISTING",
+          email: users.legacy.email,
+          minWithdrawal: 500,
+          password: "attempt-reset-password",
+        },
+      })
+    ).status,
+    400,
+  );
+});

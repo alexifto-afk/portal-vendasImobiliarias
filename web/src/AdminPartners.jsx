@@ -1,3 +1,4 @@
+import PartnerAccessForm from "./PartnerAccessForm.jsx";
 import React, { useEffect, useState } from "react";
 import { Plus, Search, Pencil, Trash2, Power, Eye } from "lucide-react";
 import Tabs from "./Tabs.jsx";
@@ -395,6 +396,12 @@ export default function AdminPartners({ request }) {
                       <td>
                         <strong>{p.user.name}</strong>
                         <small>{p.user.email}</small>
+                        <small>
+                          Nível:{" "}
+                          {p.user.role === "PARTNER"
+                            ? "Parceiro"
+                            : "Proprietário e parceiro"}
+                        </small>
                       </td>
                       <td>
                         <span
@@ -567,38 +574,19 @@ export default function AdminPartners({ request }) {
             {tab === "new-partner" && (
               <>
                 <h3>Novo parceiro</h3>
-                <ActionForm
-                  label="Cadastrar parceiro"
-                  action={async (f) => {
+                <PartnerAccessForm
+                  onSave={async (body) => {
                     await save(
                       "/admin/partners",
                       "POST",
-                      {
-                        email: f.email,
-                        minWithdrawal: amount(f.minWithdrawal),
-                      },
-                      "Parceiro cadastrado.",
+                      body,
+                      body.mode === "CREATE"
+                        ? "Parceiro cadastrado com login e senha. Informe ao parceiro os dados de acesso definidos."
+                        : "Conta existente vinculada à parceria.",
                     );
                     setTab("partners");
                   }}
-                >
-                  <p>
-                    O blogueiro deve primeiro criar sua conta no portal. Informe
-                    abaixo o mesmo e-mail.
-                  </p>
-                  <div className="form-grid">
-                    <Input
-                      label="E-mail da conta do parceiro"
-                      name="email"
-                      type="email"
-                      required
-                    />
-                    <MoneyInput
-                      label="Saque mínimo (R$)"
-                      name="minWithdrawal"
-                    />
-                  </div>
-                </ActionForm>
+                />
               </>
             )}
             {tab === "new-coupon" && (

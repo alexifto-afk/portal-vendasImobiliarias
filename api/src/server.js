@@ -1,3 +1,4 @@
+import { requireAdvertiser } from "./access.js";
 import {
   registrationSchema,
   sessionUser,
@@ -147,7 +148,7 @@ const getCommercial = registerCommercialRoutes(app, {
   audit,
 });
 registerPartnerRoutes(app, { db, auth, admin, wrap, getCommercial, audit });
-registerImageRoutes(app, { db, auth, wrap });
+registerImageRoutes(app, { db, auth, wrap, requireAdvertiser });
 registerTestCheckoutRoutes(app, { db, auth, admin, wrap, env });
 registerWebhookRoutes(app, { db, wrap, env, auth, admin });
 app.post(
@@ -267,6 +268,7 @@ const listingSchema = z.object({
 app.post(
   "/api/owner/listings",
   auth,
+  requireAdvertiser,
   wrap(async (q, r) => {
     const { config, termsVersion: currentTermsVersion } = await getCommercial();
     if (!config.commercialEnabled)
@@ -336,6 +338,7 @@ app.post(
 app.get(
   "/api/owner/listings",
   auth,
+  requireAdvertiser,
   wrap(async (q, r) =>
     r.json(
       await db.listing.findMany({
@@ -348,6 +351,7 @@ app.get(
 app.post(
   "/api/owner/listings/:id/checkout",
   auth,
+  requireAdvertiser,
   wrap(async (q, r) => {
     if (!(await getCommercial()).config.commercialEnabled)
       throw fail(503, "Pagamentos desativados.");
@@ -392,6 +396,7 @@ app.post(
 app.post(
   "/api/owner/listings/:id/sync-payment",
   auth,
+  requireAdvertiser,
   wrap(async (q, r) => {
     if (!(await getCommercial()).config.commercialEnabled)
       throw fail(503, "Pagamentos desativados.");

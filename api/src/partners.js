@@ -1,3 +1,5 @@
+import bcrypt from "bcryptjs";
+import { registrationSchema } from "./user-profile.js";
 import { z } from "zod";
 const fail = (status, message) => Object.assign(Error(message), { status });
 export const couponCode = z
@@ -372,7 +374,7 @@ export function registerPartnerRoutes(
       const [partners, coupons, payouts] = await Promise.all([
         db.partner.findMany({
           include: {
-            user: { select: { name: true, email: true } },
+            user: { select: { name: true, email: true, role: true } },
             entries: { include: { payout: { select: { status: true } } } },
             _count: { select: { coupons: true, entries: true, payouts: true } },
           },
@@ -406,30 +408,71 @@ export function registerPartnerRoutes(
     auth,
     admin,
     wrap(async (q, r) => {
+      const mode =
+        q.body?.mode ??
+        (q.body?.password !== undefined ? "CREATE" : "EXISTING");
       const input = z
-        .object({
-          email: z
-            .string()
-            .trim()
-            .email()
-            .transform((s) => s.toLowerCase()),
-          minWithdrawal: cents,
-        })
-        .parse(q.body);
+        .discriminatedUnion("mode", [
+          registrationSchema
+            .extend({ mode: z.literal("CREATE"), minWithdrawal: cents })
+            .strict(),
+          z
+            .object({
+              mode: z.literal("EXISTING"),
+              email: z
+                .string()
+                .trim()
+                .email()
+                .max(254)
+                .transform((s) => s.toLowerCase()),
+              minWithdrawal: cents,
+            })
+            .strict(),
+        ])
+        .parse({ ...q.body, mode });
+      // Hash before the transaction; never retain or return the plain password.
+      const passwordHash =
+        input.mode === "CREATE" ? await bcrypt.hash(input.password, 12) : null;
       const partner = await moneyTransaction(db, async (tx) => {
-        const user = await tx.user.findUnique({
-          where: { email: input.email },
-        });
-        if (!user || user.role === "ADMIN")
+        let user = await tx.user.findUnique({ where: { email: input.email } });
+        if (input.mode === "CREATE") {
+          if (user)
+            throw fail(
+              409,
+              "Este e-mail já possui uma conta. Use Vincular conta existente, sem alterar a senha atual.",
+            );
+          user = await tx.user.create({
+            data: {
+              name: input.name,
+              email: input.email,
+              cpf: input.cpf,
+              phone: input.phone,
+              address: input.address,
+              passwordHash,
+              role: "PARTNER",
+            },
+          });
+        } else if (!user || user.role === "ADMIN") {
           throw fail(
             400,
-            "O parceiro deve primeiro criar uma conta comum no portal com este e-mail.",
+            "Conta comum não encontrada. Use Criar acesso de parceiro para cadastrar login e senha.",
           );
+        }
         const created = await tx.partner.create({
           data: { userId: user.id, minWithdrawal: input.minWithdrawal },
         });
-        await audit(tx, q.user.id, "PARTNER_CREATED", created.id);
-        return created;
+        await audit(
+          tx,
+          q.user.id,
+          input.mode === "CREATE"
+            ? "PARTNER_ACCESS_CREATED"
+            : "PARTNER_CREATED",
+          created.id,
+        );
+        return {
+          ...created,
+          user: { name: user.name, email: user.email, role: user.role },
+        };
       });
       r.status(201).json(partner);
     }),

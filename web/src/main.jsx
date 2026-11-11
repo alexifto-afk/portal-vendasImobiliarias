@@ -1,3 +1,4 @@
+import { dashboardFor } from "./partner-access.js";
 import Tabs from "./Tabs.jsx";
 import Profile, { IdentityFields } from "./Profile.jsx";
 import { CouponField, PartnerDashboard, AdminPartners } from "./Partners.jsx";
@@ -159,13 +160,20 @@ function App() {
     ])
       .catch(() => setOffline(true))
       .finally(() => setLoading(false));
-    if (accessToken)
+    if (accessToken) {
+      const restoredToken = accessToken;
       api("/me")
-        .then(setUser)
+        .then((u) => {
+          if (accessToken !== restoredToken) return;
+          setUser(u);
+          if (u.role === "PARTNER") setView("partner");
+        })
         .catch(() => {
+          if (accessToken !== restoredToken) return;
           sessionStorage.removeItem("portal-token");
           accessToken = "";
         });
+    }
   }, []);
   const go = (v) => {
     setView(v);
@@ -173,7 +181,8 @@ function App() {
     setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const announce = () => (user ? go("owner") : setModal("auth"));
+  const announce = () =>
+    user ? go(user.role === "PARTNER" ? "partner" : "owner") : setModal("auth");
   const logout = () => {
     sessionStorage.removeItem("portal-token");
     accessToken = "";
@@ -239,9 +248,11 @@ function App() {
               Entrar
             </button>
           )}
-          <button className="primary small" onClick={announce}>
-            Anunciar imóvel <Plus size={16} />
-          </button>
+          {user?.role !== "PARTNER" && (
+            <button className="primary small" onClick={announce}>
+              Anunciar imóvel <Plus size={16} />
+            </button>
+          )}
           <button
             className="mobile-toggle"
             aria-label="Abrir menu"
@@ -258,18 +269,21 @@ function App() {
               {user.name?.trim().charAt(0).toUpperCase()}
             </span>
             <div>
-              <small>Você está conectado</small>
+              <small>
+                Você está conectado
+                {user.role === "PARTNER" ? " · Nível Parceiro" : ""}
+              </small>
               <strong title={user.name}>{user.name}</strong>
             </div>
           </div>
           <div className="account-links">
             <button
-              className={view === "admin" || view === "owner" ? "selected" : ""}
-              onClick={() => go(user.role === "ADMIN" ? "admin" : "owner")}
+              className={view === dashboardFor(user) ? "selected" : ""}
+              onClick={() => go(dashboardFor(user))}
             >
               Meu painel
             </button>
-            {user.partner && (
+            {user.partner && user.role !== "PARTNER" && (
               <button
                 className={view === "partner" ? "selected" : ""}
                 onClick={() => go("partner")}
@@ -748,7 +762,7 @@ function App() {
                   sessionStorage.setItem("portal-token", d.token);
                   setUser(d.user);
                   setModal(null);
-                  go(d.user.role === "ADMIN" ? "admin" : "owner");
+                  go(dashboardFor(d.user));
                 }}
               />
             ) : modal === "property" ? (
@@ -793,14 +807,14 @@ function Auth({ onSuccess }) {
     [error, setError] = useState("");
   return (
     <>
-      <div className="kicker">ÁREA DO PROPRIETÁRIO</div>
+      <div className="kicker">ACESSO AO PORTAL</div>
       <h2>
         {register ? "Seu imóvel, novos caminhos." : "Que bom ter você aqui."}
       </h2>
       <p>
         {register
           ? "Crie sua conta para anunciar e acompanhar seu imóvel."
-          : "Entre para acompanhar anúncios e negociações."}
+          : "Entre para acessar seu painel e acompanhar suas atividades."}
       </p>
       <form
         onSubmit={async (e) => {
