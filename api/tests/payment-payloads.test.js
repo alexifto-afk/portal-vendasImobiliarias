@@ -87,6 +87,10 @@ test("Orders inclui retorno HTTPS, identificação de fatura e 3DS obrigatório"
   });
   assert.equal(body.config.statement_descriptor, "LPIMOVEIS");
   assert.equal(
+    body.config.online.transaction_security.validation,
+    "on_fraud_risk",
+  );
+  assert.equal(
     body.config.online.transaction_security.liability_shift,
     "required",
   );
