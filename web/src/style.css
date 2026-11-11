@@ -1880,3 +1880,48 @@ footer a:not(.brand) {
 .payment-fields {
   min-width: 0;
 }
+
+/* Partner program */
+.partner-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.partner-fields > * {
+  margin-bottom: 14px;
+}
+.coupon-box {
+  border: 1px solid var(--line, #d9ddd7);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+}
+.coupon-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+.coupon-actions .field {
+  flex: 1;
+  min-width: 180px;
+}
+.partner-table {
+  overflow-x: auto;
+  margin: 16px 0;
+}
+.partner-table table {
+  border-collapse: collapse;
+  width: 100%;
+  text-align: left;
+}
+.partner-table th,
+.partner-table td {
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+  overflow-wrap: anywhere;
+}
+.partner-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}

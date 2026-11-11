@@ -13,6 +13,7 @@ model User {
   role String @default("OWNER")
   listings Listing[]
   uploads ImageUpload[]
+  partner Partner?
   createdAt DateTime @default(now())
 }
 model Listing {
@@ -45,10 +46,19 @@ model Listing {
   termsText String @db.Text
   paymentId String? @unique
   checkoutUrl String?
+  couponId String?
+  coupon Coupon? @relation(fields: [couponId], references: [id])
+  couponCode String?
+  originalAdPrice Int?
+  partnerReward Int @default(0)
+  partnerHoldDays Int @default(0)
+  affiliateVoidedAt DateTime?
+  affiliateEntries AffiliateEntry[]
   leads Lead[]
   deal Deal?
   createdAt DateTime @default(now())
   @@index([status, expiresAt])
+  @@index([couponId, paidAt])
 }
 model Lead {
   id String @id @default(cuid())
@@ -102,4 +112,69 @@ model CommercialSettings {
   rentCommissionBps Int
   enabled Boolean @default(false)
   updatedAt DateTime @updatedAt
+}
+
+model Partner {
+  id String @id @default(cuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id])
+  active Boolean @default(true)
+  minWithdrawal Int
+  coupons Coupon[]
+  entries AffiliateEntry[]
+  payouts PartnerPayout[]
+  createdAt DateTime @default(now())
+}
+
+model Coupon {
+  id String @id @default(cuid())
+  code String @unique
+  partnerId String
+  partner Partner @relation(fields: [partnerId], references: [id])
+  active Boolean @default(true)
+  discountCents Int
+  rewardCents Int
+  holdDays Int
+  plans String[]
+  expiresAt DateTime
+  maxUses Int?
+  reservations Int @default(0)
+  listings Listing[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Lançamentos com sinal: crédito positivo; estorno negativo. Uma ocorrência
+// por anúncio/tipo. Saques reservam os lançamentos dentro de transação serializável.
+model AffiliateEntry {
+  id String @id @default(cuid())
+  partnerId String
+  partner Partner @relation(fields: [partnerId], references: [id])
+  listingId String
+  listing Listing @relation(fields: [listingId], references: [id])
+  kind String
+  amount Int
+  availableAt DateTime
+  payoutId String?
+  payout PartnerPayout? @relation(fields: [payoutId], references: [id])
+  createdAt DateTime @default(now())
+  @@unique([listingId, kind])
+  @@index([partnerId, payoutId, availableAt])
+}
+
+model PartnerPayout {
+  id String @id @default(cuid())
+  partnerId String
+  partner Partner @relation(fields: [partnerId], references: [id])
+  requestKey String @unique
+  amount Int
+  status String @default("REQUESTED")
+  pixKey String
+  recipientName String
+  receiptReference String?
+  note String?
+  entries AffiliateEntry[]
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+  @@index([partnerId, status])
 }
