@@ -21,7 +21,8 @@ export function brazilianPhone(value) {
 export function purchaseMetadata(history) {
   if (!history) return {};
   return {
-    authentication_type: "PASSWORD",
+    // Preferences usa enum próprio; não compartilhar o valor WEB de Orders.
+    authentication_type: "Native web",
     is_first_purchase_online: !history.lastPaidAt,
     ...(history.lastPaidAt
       ? { last_purchase: new Date(history.lastPaidAt).toISOString() }
@@ -146,7 +147,8 @@ export function testOrderPayload(reference, amount, options = {}) {
     // No schema Orders a chave documentada é literal, com ponto; não é objeto aninhado.
     additional_info: {
       "payer.registration_date": "2026-11-01T00:00:00.000Z",
-      "payer.authentication_type": "PASSWORD",
+      // Orders aceita WEB ou MOBILE, conforme industry-data. Portal é web.
+      "payer.authentication_type": "WEB",
       "payer.is_first_purchase_online": false,
       "payer.last_purchase": "2026-11-05T00:00:00.000Z",
     },
