@@ -1,3 +1,4 @@
+import { registerWebhookRoutes } from "./mp-webhooks.js";
 import { requestMercadoPago } from "./mp-sdk.js";
 import { payerSchema, preferencePayload } from "./payment-payloads.js";
 import "dotenv/config";
@@ -129,6 +130,7 @@ const getCommercial = registerCommercialRoutes(app, {
 });
 registerImageRoutes(app, { db, auth, wrap });
 registerTestCheckoutRoutes(app, { db, auth, admin, wrap, env });
+registerWebhookRoutes(app, { db, wrap, env, auth, admin });
 app.post(
   "/api/auth/register",
   authLimit,
@@ -332,7 +334,15 @@ app.post(
     if (!owner) throw fail(404, "Proprietário não encontrado.");
     const pref = await mp("/checkout/preferences", {
       method: "POST",
-      body: JSON.stringify(preferencePayload(l, owner, payer, webOrigin)),
+      body: JSON.stringify(
+        preferencePayload(
+          l,
+          owner,
+          payer,
+          webOrigin,
+          env.MP_STATEMENT_DESCRIPTOR,
+        ),
+      ),
     });
     const url = pref.init_point;
     if (!url?.startsWith("https://")) throw fail(502, "Checkout indisponível.");

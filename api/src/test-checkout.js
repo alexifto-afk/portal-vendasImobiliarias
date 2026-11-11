@@ -179,7 +179,12 @@ export function registerTestCheckoutRoutes(
       const raw = await client("/v1/orders", {
         method: "POST",
         headers: { "X-Idempotency-Key": key },
-        body: JSON.stringify(testOrderPayload(reference, TEST_AMOUNT)),
+        body: JSON.stringify(
+          testOrderPayload(reference, TEST_AMOUNT, {
+            origin: env.WEB_ORIGIN,
+            descriptor: env.MP_STATEMENT_DESCRIPTOR,
+          }),
+        ),
       });
       const order = safeTestOrder(raw, sellerId, reference);
       await db.audit.upsert({

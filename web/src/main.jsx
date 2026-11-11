@@ -243,6 +243,16 @@ function App() {
           </button>
         </div>
       </header>
+      {["returned", "pending", "failure"].includes(
+        new URLSearchParams(window.location.search).get("payment"),
+      ) && (
+        <div className="notice" role="status">
+          {new URLSearchParams(window.location.search).get("flow") === "test"
+            ? "Você voltou do pagamento de teste. Abra Meu painel → Teste Mercado Pago e consulte a ordem."
+            : "Você voltou do Mercado Pago. Entre em Meu painel para conferir a confirmação do pagamento do anúncio."}{" "}
+          O retorno a esta página não confirma o pagamento.
+        </div>
+      )}
       {error && (
         <div role="alert" className="notice error">
           {error}
