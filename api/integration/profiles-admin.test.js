@@ -562,3 +562,292 @@ test("vincular conta existente preserva senha, anúncios e permissões anteriore
     400,
   );
 });
+
+async function newCustomer(suffix, role = "OWNER") {
+  return db.user.create({
+    data: {
+      name: "Cliente " + suffix,
+      email: `${prefix}-${suffix}@example.com`,
+      passwordHash: await bcrypt.hash(password, 4),
+      role,
+    },
+  });
+}
+async function customerListing(ownerId) {
+  return db.listing.create({
+    data: {
+      ownerId,
+      title: "Imóvel do cliente de teste",
+      description: "Descrição de imóvel exclusivamente para testes de gestão.",
+      type: "HOUSE",
+      purpose: "SALE",
+      city: "Palmas",
+      neighborhood: "Centro",
+      privateAddress: "Endereço do imóvel não exposto nesta consulta",
+      ownerPhone: "63999999999",
+      price: 100000,
+      area: 100,
+      images: [],
+      adPrice: 2990,
+      durationDays: 30,
+      commissionBps: 600,
+      termsVersion: "test",
+      termsText: "test",
+      acceptedAt: new Date(),
+    },
+  });
+}
+test("gerenciador de clientes exige administrador em todas as operações", async () => {
+  for (const [path, method, body] of [
+    ["/admin/customers", "GET"],
+    [`/admin/customers/${users.owner.id}`, "GET"],
+    [`/admin/customers/${users.owner.id}`, "PUT", {}],
+    [`/admin/customers/${users.owner.id}`, "DELETE"],
+    [`/admin/customers/${users.owner.id}/partner`, "POST", {}],
+  ]) {
+    assert.equal(
+      (await request(path, { who: null, method, body })).status,
+      401,
+    );
+    assert.equal(
+      (await request(path, { who: "owner", method, body })).status,
+      403,
+    );
+    const p = await db.user.findFirst({
+      where: { email: { startsWith: prefix }, role: "PARTNER" },
+    });
+    assert.equal(
+      (
+        await request(path, {
+          token: jwt.sign({ sub: p.id }, secret),
+          method,
+          body,
+        })
+      ).status,
+      403,
+    );
+  }
+});
+test("tabela omite administradores e dados sensíveis; detalhes mostram apenas o cliente escolhido", async () => {
+  const u = await newCustomer("detail"),
+    other = await newCustomer("detail-other");
+  const privateData = identity();
+  await db.user.update({ where: { id: u.id }, data: privateData });
+  const ownAd = await customerListing(u.id),
+    otherAd = await customerListing(other.id);
+  const rows = await request("/admin/customers");
+  assert.equal(rows.status, 200);
+  assert.equal(rows.headers.get("cache-control"), "no-store");
+  assert.ok(rows.data.some((row) => row.id === u.id));
+  assert.ok(
+    rows.data.every(
+      (row) =>
+        row.role !== "ADMIN" &&
+        row.cpf === undefined &&
+        row.address === undefined &&
+        row.passwordHash === undefined,
+    ),
+  );
+  const result = await request(`/admin/customers/${u.id}`);
+  assert.equal(result.status, 200);
+  assert.equal(result.data.cpf, privateData.cpf);
+  assert.equal(result.data.address, privateData.address);
+  assert.equal(result.data.passwordHash, undefined);
+  assert.equal(result.data.listings.length, 1);
+  assert.equal(result.data.listings[0].id, ownAd.id);
+  assert.notEqual(result.data.listings[0].id, otherAd.id);
+  assert.equal(result.data.listings[0].privateAddress, undefined);
+  assert.equal(
+    (await request(`/admin/customers/${users.admin.id}`)).status,
+    403,
+  );
+});
+test("edição administra dados com confirmação de e-mail, sem alterar senha ou papel", async () => {
+  const u = await newCustomer("editable"),
+    info = identity(),
+    email = `${prefix}-new-login@example.com`;
+  const input = { ...info, email };
+  assert.equal(
+    (await request(`/admin/customers/${u.id}`, { method: "PUT", body: input }))
+      .status,
+    400,
+  );
+  assert.equal(
+    (await db.user.findUnique({ where: { id: u.id } })).email,
+    u.email,
+  );
+  const result = await request(`/admin/customers/${u.id}`, {
+    method: "PUT",
+    body: { ...input, confirmEmailChange: true },
+  });
+  assert.equal(result.status, 200);
+  const saved = await db.user.findUnique({ where: { id: u.id } });
+  assert.equal(saved.passwordHash, u.passwordHash);
+  assert.equal(saved.role, "OWNER");
+  assert.equal(saved.cpf, info.cpf);
+  assert.equal(
+    (
+      await request("/auth/login", {
+        who: null,
+        body: { email: u.email, password },
+      })
+    ).status,
+    401,
+  );
+  assert.equal(
+    (await request("/auth/login", { who: null, body: { email, password } }))
+      .status,
+    200,
+  );
+  assert.equal(
+    (
+      await request(`/admin/customers/${u.id}`, {
+        method: "PUT",
+        body: { ...input, role: "ADMIN", confirmEmailChange: true },
+      })
+    ).status,
+    400,
+  );
+  const legacy = await newCustomer("editable-legacy");
+  assert.equal(
+    (
+      await request(`/admin/customers/${legacy.id}`, {
+        method: "PUT",
+        body: {
+          name: "Nome corrigido",
+          email: legacy.email,
+          cpf: null,
+          phone: null,
+          address: null,
+        },
+      })
+    ).status,
+    200,
+  );
+  const audits = JSON.stringify(
+    await db.audit.findMany({ where: { entityId: u.id } }),
+  );
+  assert.ok(!audits.includes(info.cpf));
+  assert.ok(!audits.includes(info.address));
+  assert.ok(!audits.includes(password));
+});
+test("exclusão remove apenas contas sem vínculos e suas fotos em rascunho", async () => {
+  const u = await newCustomer("deletable"),
+    owner = await newCustomer("not-deletable");
+  await customerListing(owner.id);
+  await db.imageUpload.create({
+    data: {
+      id: randomUUID(),
+      ownerId: u.id,
+      mimeType: "image/webp",
+      data: Buffer.from("local-test-fixture"),
+    },
+  });
+  const token = jwt.sign({ sub: u.id }, secret);
+  assert.equal(
+    (await request(`/admin/customers/${owner.id}`, { method: "DELETE" }))
+      .status,
+    409,
+  );
+  assert.equal(
+    (
+      await request(`/admin/customers/${users.blogger.id}`, {
+        method: "DELETE",
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (await request(`/admin/customers/${users.admin.id}`, { method: "DELETE" }))
+      .status,
+    403,
+  );
+  assert.equal(
+    (await request(`/admin/customers/${u.id}`, { method: "DELETE" })).status,
+    200,
+  );
+  assert.equal(await db.user.findUnique({ where: { id: u.id } }), null);
+  assert.equal(await db.imageUpload.count({ where: { ownerId: u.id } }), 0);
+  assert.equal((await request("/me", { token })).status, 401);
+  assert.ok(await db.user.findUnique({ where: { id: owner.id } }));
+});
+test("transformação em parceiro preserva login/senha e não duplica vínculo", async () => {
+  const u = await newCustomer("convertible");
+  const result = await request(`/admin/customers/${u.id}/partner`, {
+    body: { minWithdrawal: 1000, keepOwnerAccess: false },
+  });
+  assert.equal(result.status, 201);
+  assert.equal(result.data.user.role, "PARTNER");
+  const saved = await db.user.findUnique({ where: { id: u.id } });
+  assert.equal(saved.email, u.email);
+  assert.equal(saved.passwordHash, u.passwordHash);
+  const login = await request("/auth/login", {
+    who: null,
+    body: { email: u.email, password },
+  });
+  assert.equal(login.status, 200);
+  assert.equal(login.data.user.role, "PARTNER");
+  assert.equal(
+    (await request("/partner/dashboard", { token: login.data.token })).status,
+    200,
+  );
+  assert.equal(
+    (await request("/owner/listings", { token: login.data.token })).status,
+    403,
+  );
+  assert.equal(
+    (
+      await request(`/admin/customers/${u.id}/partner`, {
+        body: { minWithdrawal: 1000, keepOwnerAccess: false },
+      })
+    ).status,
+    409,
+  );
+  assert.equal(await db.partner.count({ where: { userId: u.id } }), 1);
+});
+test("cliente com anúncios mantém acesso de proprietário na transformação", async () => {
+  const u = await newCustomer("convert-with-ads"),
+    ad = await customerListing(u.id);
+  assert.equal(
+    (
+      await request(`/admin/customers/${u.id}/partner`, {
+        body: { minWithdrawal: 500, keepOwnerAccess: false },
+      })
+    ).status,
+    409,
+  );
+  assert.equal(await db.partner.findUnique({ where: { userId: u.id } }), null);
+  const result = await request(`/admin/customers/${u.id}/partner`, {
+    body: { minWithdrawal: 500, keepOwnerAccess: true },
+  });
+  assert.equal(result.status, 201);
+  assert.equal(result.data.user.role, "OWNER");
+  const token = jwt.sign({ sub: u.id }, secret);
+  assert.equal((await request("/owner/listings", { token })).status, 200);
+  assert.equal((await request("/partner/dashboard", { token })).status, 200);
+  assert.equal(
+    (await db.listing.findUnique({ where: { id: ad.id } })).ownerId,
+    u.id,
+  );
+});
+test("duas conversões concorrentes criam uma única parceria", async () => {
+  const u = await newCustomer("convert-concurrent");
+  const results = await Promise.all(
+    [1, 2].map(() =>
+      request(`/admin/customers/${u.id}/partner`, {
+        body: { minWithdrawal: 500, keepOwnerAccess: false },
+      }),
+    ),
+  );
+  assert.equal(
+    results.filter((r) => r.status === 201).length,
+    1,
+    JSON.stringify(results),
+  );
+  assert.equal(
+    results.filter((r) => r.status === 409).length,
+    1,
+    JSON.stringify(results),
+  );
+  assert.equal(await db.partner.count({ where: { userId: u.id } }), 1);
+});

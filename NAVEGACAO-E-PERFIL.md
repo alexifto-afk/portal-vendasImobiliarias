@@ -58,3 +58,7 @@ Os testes verificam cadastro obrigatório, normalização e unicidade de CPF, co
 ## Login de novos parceiros
 
 O formulário Novo parceiro agora permite criar login e senha com nível Parceiro, sem cadastro prévio pelo blogueiro. Veja [ACESSO-DO-PARCEIRO.md](ACESSO-DO-PARCEIRO.md). A alternativa Vincular conta existente preserva as permissões e a senha anteriores.
+
+## Gerenciador de clientes
+
+A aba **Clientes cadastrados** reúne usuários comuns e parceiros em tabela, com pesquisa, filtros, edição, detalhes, exclusão protegida e transformação em parceiro. Veja [CLIENTES-CADASTRADOS.md](CLIENTES-CADASTRADOS.md).
