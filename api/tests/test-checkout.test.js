@@ -19,12 +19,12 @@ const raw = () => ({
   type: "online",
   processing_mode: "manual",
   external_reference: "portal-test-" + key,
-  total_amount: "1.00",
+  total_amount: "10.00",
   currency: "BRL",
   user_id: "42",
   created_date: new Date().toISOString(),
   status,
-  total_paid_amount: status === "processed" ? "1.00" : "0.00",
+  total_paid_amount: status === "processed" ? "10.00" : "0.00",
   checkout_url: `https://www.mercadopago.com.br/checkout/v1/redirect?order_id=${orderId}`,
   client_token: "must-not-leak",
 });
@@ -116,7 +116,11 @@ test("cria ordem sem vínculo financeiro e retoma tentativa idempotente sem repe
   assert.equal(post.path, "https://api.mercadopago.com/v1/orders");
   assert.equal(post.options.headers["X-Idempotency-Key"], key);
   const body = JSON.parse(post.options.body);
-  assert.equal(body.total_amount, "1.00");
+  assert.equal(body.total_amount, "10.00");
+  assert.deepEqual(body.payer, { email: "buyer@email.com" });
+  assert.deepEqual(body.items, [
+    { title: "Compra de teste do portal", unit_price: "10.00", quantity: 1 },
+  ]);
   assert.equal(body.processing_mode, "manual");
   assert.equal(body.external_reference, "portal-test-" + key);
   const count = requests.length;
@@ -216,4 +220,27 @@ test("diagnóstico expõe somente códigos técnicos e não retorna dados do com
     paymentAttempts: [],
     errorCodes: [],
   });
+});
+
+test("consulta legada preserva valor de R$ 1 e não aprova pagamento parcial de R$ 10", () => {
+  const legacy = {
+    ...raw(),
+    total_amount: "1.00",
+    total_paid_amount: "1.00",
+    status: "processed",
+  };
+  assert.throws(
+    () => safeTestOrder(legacy, 42, "portal-test-" + key),
+    /resposta/,
+  );
+  const old = safeTestOrder(legacy, 42, "portal-test-" + key, orderId, "1.00");
+  assert.equal(old.amount, "1.00");
+  assert.equal(old.approved, true);
+  const partial = safeTestOrder(
+    { ...raw(), status: "processed", total_paid_amount: "1.00" },
+    42,
+    "portal-test-" + key,
+  );
+  assert.equal(partial.approved, false);
+  assert.equal(partial.readyForMeasurement, false);
 });

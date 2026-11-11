@@ -29,7 +29,7 @@ Valor: cole o Access Token da aba Teste
 1. Entre no portal como administrador.
 2. Abra **Meu painel → Teste Mercado Pago**.
 3. Clique em **Criar compra de teste**.
-4. O painel exibirá o Order ID e o link do checkout, com valor simulado de R$ 1,00.
+4. O painel exibirá o Order ID e o link do checkout, com valor simulado de R$ 10,00.
 5. Clique em **Copiar link**. Abra uma janela anônima com **Ctrl + Shift + N** e cole o link.
 
 O teste pode ser criado com as contratações comerciais desativadas e sem comissões definidas. O botão gera apenas uma ordem para simulação; não conclui automaticamente o pagamento. Em caso de falha de rede, tente novamente: a tentativa usa uma chave de idempotência mantida na sessão do navegador para evitar criação repetida. O histórico exibe as últimas 20 ordens deste portal.
@@ -73,3 +73,9 @@ Criar a ordem sem concluir o pagamento não atende ao pedido de compra concluíd
 Se os dados de teste já foram conferidos e a mensagem persiste, não altere credenciais às cegas. No portal, clique em **Consultar pagamento** da ordem afetada e depois **Copiar diagnóstico**. O painel mostra apenas status, códigos técnicos de tentativas e ID da aplicação, quando fornecidos pela API. Esses dados podem ser compartilhados para investigar o erro, sem tokens ou dados do cartão.
 
 Compare o ID da aplicação com a aplicação aberta no Developers. A consulta pode não retornar tentativa alguma quando o checkout bloqueia o pagamento antes do processamento. Nesse caso, é necessário conferir os registros da mesma aplicação em **Logs/API Requests** no Developers ou abrir um atendimento ao Mercado Pago com Order ID e horário da tentativa. Não envie resposta JSON bruta, cookies, tokens nem detalhes de cartão. A ausência de código não comprova erro de credenciais ou de implementação. O diagnóstico não altera nem reprocessa o pagamento.
+
+## Parâmetros alinhados ao teste direto que funcionou
+
+Após confirmação do responsável de que o pagamento pelo comando direto funcionou, as novas ordens do painel passam a usar R$ 10,00 e `payer.email` igual a `buyer@email.com`, como naquela requisição. A criação deixa de enviar a descrição e a expiração opcionais. O endereço é um dado fixo de simulação, usado apenas no auxiliar de teste, nunca no checkout comercial. Não foi comprovado qual dessas diferenças explica a rejeição anterior.
+
+As ordens anteriores de R$ 1,00 continuam consultáveis e são validadas pelo seu valor original. Novas ordens aparecem como R$ 10,00 e só são tratadas como aprovadas quando o valor pago corresponde ao esperado e a API confirma o processamento. Faça merge do PR e novo deploy da API; confirme que MP_TEST_ACCESS_TOKEN no Render é a mesma credencial de teste validada no comando local, sem compartilhá-la no chat. Gere uma única nova compra pelo painel e conclua a simulação para homologar também o fluxo via Render. Este PR não substitui variáveis de ambiente nem ativa cobranças reais.
