@@ -60,6 +60,7 @@ test("anúncio exige pagamento, revisão, publicação e prazo vigente", () => {
     { status: "REJECTED" },
     { status: "CLOSED" },
     { paidAt: null },
+    { affiliateVoidedAt: now },
     { reviewed: false },
     { expiresAt: new Date("2026-11-09") },
   ])

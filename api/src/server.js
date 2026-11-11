@@ -1,3 +1,9 @@
+import {
+  registerPartnerRoutes,
+  reserveCoupon,
+  moneyTransaction,
+  creditPartner,
+} from "./partners.js";
 import { registerWebhookRoutes } from "./mp-webhooks.js";
 import { requestMercadoPago } from "./mp-sdk.js";
 import { payerSchema, preferencePayload } from "./payment-payloads.js";
@@ -81,7 +87,13 @@ const auth = wrap(async (q, r, n) => {
   }
   q.user = await db.user.findUnique({
     where: { id: token.sub },
-    select: { id: true, role: true, name: true, email: true },
+    select: {
+      id: true,
+      role: true,
+      name: true,
+      email: true,
+      partner: { select: { active: true } },
+    },
   });
   if (!q.user) throw fail(401, "Conta não encontrada.");
   n();
@@ -91,6 +103,7 @@ const admin = (q, r, n) =>
 const publicWhere = () => ({
   status: "PUBLISHED",
   reviewed: true,
+  affiliateVoidedAt: null,
   paidAt: { not: null },
   expiresAt: { gt: new Date() },
 });
@@ -128,6 +141,7 @@ const getCommercial = registerCommercialRoutes(app, {
   env,
   audit,
 });
+registerPartnerRoutes(app, { db, auth, admin, wrap, getCommercial, audit });
 registerImageRoutes(app, { db, auth, wrap });
 registerTestCheckoutRoutes(app, { db, auth, admin, wrap, env });
 registerWebhookRoutes(app, { db, wrap, env, auth, admin });
@@ -155,7 +169,12 @@ app.post(
     });
     r.status(201).json({
       token: tokenFor(u),
-      user: { id: u.id, name: u.name, role: u.role },
+      user: {
+        id: u.id,
+        name: u.name,
+        role: u.role,
+        partner: u.partner || null,
+      },
     });
   }),
 );
@@ -172,12 +191,20 @@ app.post(
         password: z.string().max(128),
       })
       .parse(q.body);
-    const u = await db.user.findUnique({ where: { email: d.email } });
+    const u = await db.user.findUnique({
+      where: { email: d.email },
+      include: { partner: { select: { active: true } } },
+    });
     if (!u || !(await bcrypt.compare(d.password, u.passwordHash)))
       throw fail(401, "E-mail ou senha inválidos.");
     r.json({
       token: tokenFor(u),
-      user: { id: u.id, name: u.name, role: u.role },
+      user: {
+        id: u.id,
+        name: u.name,
+        role: u.role,
+        partner: u.partner || null,
+      },
     });
   }),
 );
@@ -221,6 +248,8 @@ app.get(
 );
 const phone = z.string().regex(/^\d{10,13}$/, "Informe o telefone com DDD.");
 const listingSchema = z.object({
+  couponCode: z.string().trim().max(32).optional(),
+  couponVersion: z.string().datetime().optional(),
   title: z.string().trim().min(8).max(100),
   description: z.string().trim().min(30).max(5000),
   type: z.enum(["HOUSE", "LOT", "FARM"]),
@@ -257,7 +286,8 @@ app.post(
         503,
         "Contratações ainda não estão habilitadas. Fale com o corretor.",
       );
-    const { termsAccepted, termsVersion, ...d } = listingSchema.parse(q.body);
+    const { termsAccepted, termsVersion, couponCode, couponVersion, ...d } =
+      listingSchema.parse(q.body);
     if (termsVersion !== currentTermsVersion)
       throw fail(
         409,
@@ -265,7 +295,14 @@ app.post(
       );
     const adPrice =
       d.plan === "FEATURED" ? config.featuredPrice : config.adPrice;
-    const l = await db.$transaction(async (tx) => {
+    const l = await moneyTransaction(db, async (tx) => {
+      const promotion = await reserveCoupon(tx, {
+        code: couponCode,
+        version: couponVersion,
+        basePrice: adPrice,
+        plan: d.plan,
+        userId: q.user.id,
+      });
       const ids = d.images.map(uploadId);
       if (new Set(ids).size !== ids.length)
         throw fail(400, "Remova fotos repetidas.");
@@ -281,14 +318,18 @@ app.post(
         data: {
           ...d,
           ownerId: q.user.id,
-          adPrice,
+          ...promotion,
           durationDays: config.durationDays,
           commissionBps:
             d.purpose === "SALE"
               ? config.saleCommissionBps
               : config.rentCommissionBps,
           termsVersion,
-          termsText: terms({ ...config, adPrice }, d.purpose),
+          termsText:
+            terms({ ...config, adPrice: promotion.adPrice }, d.purpose) +
+            (couponCode
+              ? ` Cupom ${promotion.couponCode}: preço original R$ ${(adPrice / 100).toFixed(2)}, desconto R$ ${((adPrice - promotion.adPrice) / 100).toFixed(2)}. A promoção refere-se à divulgação e não altera a comissão de intermediação.`
+              : ""),
           acceptedAt: new Date(),
         },
       });
@@ -323,7 +364,7 @@ app.post(
     if (!(await getCommercial()).config.commercialEnabled)
       throw fail(503, "Pagamentos desativados.");
     const l = await owned(q);
-    if (l.paidAt || l.status === "CANCELLED")
+    if (l.paidAt || l.affiliateVoidedAt || l.status === "CANCELLED")
       throw fail(409, "Anúncio já pago ou cancelado.");
     if (l.checkoutUrl) return r.json({ url: l.checkoutUrl });
     const payer = payerSchema.parse(q.body?.payer);
@@ -367,22 +408,31 @@ app.post(
     if (!(await getCommercial()).config.commercialEnabled)
       throw fail(503, "Pagamentos desativados.");
     const l = await owned(q);
+    if (l.affiliateVoidedAt) return r.json({ paid: false, reversed: true });
     if (l.paidAt) return r.json({ paid: true });
     const result = await mp(
       `/v1/payments/search?external_reference=${encodeURIComponent(l.id)}&sort=date_created&criteria=desc&limit=50`,
     );
-    const p = result.results?.find((p) =>
-      paymentMatches(p, l, env.MP_COLLECTOR_ID),
+    const p = result.results?.find(
+      (p) =>
+        paymentMatches(p, l, env.MP_COLLECTOR_ID) &&
+        !Number(p.transaction_amount_refunded || 0),
     );
     if (!p) return r.json({ paid: false });
-    await db.$transaction(async (tx) => {
+    const confirmed = await moneyTransaction(db, async (tx) => {
       await tx.listing.updateMany({
-        where: { id: l.id, paidAt: null },
+        where: { id: l.id, paidAt: null, affiliateVoidedAt: null },
         data: { paidAt: new Date(), paymentId: String(p.id) },
       });
+      await creditPartner(tx, l, String(p.id));
       await audit(tx, q.user.id, "PAYMENT_VERIFIED", l.id, String(p.id));
+      const current = await tx.listing.findUnique({ where: { id: l.id } });
+      return {
+        paid: Boolean(current.paidAt) && !current.affiliateVoidedAt,
+        reversed: Boolean(current.affiliateVoidedAt),
+      };
     });
-    r.json({ paid: true });
+    r.json(confirmed);
   }),
 );
 const leadLimit = rateLimit({
@@ -440,8 +490,8 @@ app.post(
       if (!l) throw fail(404, "Imóvel não encontrado.");
       if (["CLOSED", "CANCELLED"].includes(l.status))
         throw fail(409, "Anúncio encerrado.");
-      if (approve && !l.paidAt)
-        throw fail(409, "Confirme o pagamento antes de publicar.");
+      if (approve && (!l.paidAt || l.affiliateVoidedAt))
+        throw fail(409, "Confirme um pagamento sem estorno antes de publicar.");
       await tx.listing.update({
         where: { id: l.id },
         data: approve

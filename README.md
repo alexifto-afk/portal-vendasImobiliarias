@@ -110,7 +110,7 @@ Configure `VITE_API_URL=https://SUA-API.onrender.com/api` e faça deploy. Coloqu
 
 1. Proprietário cria conta, cadastra imóvel e aceita as condições vigentes.
 2. Clica em pagar e conclui o checkout do Mercado Pago.
-3. Volta ao painel e clica **Já paguei: verificar**. O corretor também pode consultar o pagamento pelo painel. **Não há webhook nem conciliação agendada nesta versão.**
+3. Volta ao painel e clica **Já paguei: verificar**. O corretor também pode consultar o pagamento pelo painel. O webhook assinado também confirma pagamentos; não há conciliação agendada.
 4. O backend consulta o PSP e confirma somente pagamentos aprovados correspondentes ao anúncio e à conta recebedora.
 5. Corretor revisa fotos e texto, remove ofertas com dados privados/contatos no conteúdo reprovando o cadastro, e aprova a publicação.
 6. Interessado registra contato e continua no WhatsApp de Lourival. Clicar no link não envia mensagem automaticamente.
@@ -122,7 +122,7 @@ Configure `VITE_API_URL=https://SUA-API.onrender.com/api` e faça deploy. Coloqu
 - Não existe garantia técnica de impedir fechamento por fora. Contrato de intermediação e registros ajudam a comprovar o atendimento, sem garantir cobrança judicial.
 - O resumo de negociação **não é um contrato de compra e venda/locação completo**, não assina documentos e não substitui análise da matrícula, titularidade, escritura ou registro quando aplicáveis.
 - O recebimento de comissão é manual. Não há repasse/split automático para o corretor.
-- Reembolsos e chargebacks devem ser acompanhados no Mercado Pago; não há reconciliação automática após o pagamento inicial. Retire o anúncio manualmente quando necessário. Uma tentativa paga duplicada não gera novo prazo; confira e devolva duplicidades pelo PSP.
+- Reembolsos e chargebacks devem ser acompanhados no Mercado Pago. O webhook de produção processa estornos recebidos e retira o anúncio; não há varredura periódica de reconciliação. Confira entregas e retire o anúncio manualmente se necessário. Uma tentativa paga duplicada não gera novo prazo; confira e devolva duplicidades pelo PSP.
 - Não há recuperação de senha, edição/renovação pelo anunciante, notificações automáticas nem assinatura digital. As fotos enviadas são validadas, reduzidas e convertidas para WebP, sem os metadados originais.
 - O catálogo retorna até 100 anúncios, o painel até 500 registros e o histórico até 200 eventos recentes. Totais no painel correspondem a essa janela. Paginação e relatórios completos são evolução necessária com aumento de volume.
 - Rate limit é em memória, adequado a instância única; para múltiplas instâncias use armazenamento compartilhado. JWT fica em sessionStorage e expira em 8h; logout remove a sessão do navegador.
@@ -159,3 +159,7 @@ Veja [RETORNOS-WEBHOOKS-3DS.md](RETORNOS-WEBHOOKS-3DS.md) para implantar os endp
 ## Boas práticas de dados do pagador
 
 Veja [BOAS-PRATICAS-PAGADOR.md](BOAS-PRATICAS-PAGADOR.md) para código externo do item, telefone, autenticação, histórico confirmado do portal e mensagens de retorno, com separação dos dados reais e de homologação.
+
+## Parceiros e cupons
+
+Veja [PARCEIROS-E-CUPONS.md](PARCEIROS-E-CUPONS.md) para implantação, cadastro dos blogueiros, descontos, extrato, saques manuais por Pix, compensação de estornos e testes de concorrência com PostgreSQL isolado.

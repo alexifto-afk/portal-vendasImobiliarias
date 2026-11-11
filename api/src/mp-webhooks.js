@@ -1,3 +1,4 @@
+import { moneyTransaction, creditPartner, reversePartner } from "./partners.js";
 import { createHash } from "node:crypto";
 import { WebhookSignatureValidator } from "mercadopago";
 import { requestMercadoPago } from "./mp-sdk.js";
@@ -133,35 +134,52 @@ export function registerWebhookRoutes(
               "Pagamento não corresponde ao anúncio ou recebedor.",
             );
           result =
-            payment.status === "approved"
+            payment.status === "approved" &&
+            !Number(payment.transaction_amount_refunded || 0)
               ? "payment_verified"
-              : ["refunded", "charged_back"].includes(payment.status)
+              : ["refunded", "charged_back"].includes(payment.status) ||
+                  Number(payment.transaction_amount_refunded || 0) > 0
                 ? "payment_reversed"
                 : "payment_status_verified";
         }
       }
       try {
-        await db.$transaction(async (tx) => {
+        await moneyTransaction(db, async (tx) => {
           if (await tx.audit.findUnique({ where: { id: eventId } })) return;
-          if (listing && result === "payment_verified")
+          if (listing && result === "payment_verified") {
             await tx.listing.updateMany({
-              where: { id: listing.id, paidAt: null },
+              where: { id: listing.id, paidAt: null, affiliateVoidedAt: null },
               data: { paidAt: new Date(), paymentId: resourceId },
             });
+            await creditPartner(tx, listing, resourceId);
+          }
           // Estorno não apaga o histórico: retira da vitrine se era este o pagamento.
           if (
             listing &&
             result === "payment_reversed" &&
-            listing.paymentId === resourceId
-          )
-            await tx.listing.updateMany({
-              where: {
-                id: listing.id,
-                paymentId: resourceId,
-                status: { notIn: ["CLOSED", "CANCELLED"] },
-              },
-              data: { status: "REJECTED", reviewed: false },
+            (!listing.paymentId || listing.paymentId === resourceId)
+          ) {
+            // Read inside the serializable transaction to avoid a stale webhook
+            // reversing a different payment concurrently confirmed for this ad.
+            const current = await tx.listing.findUnique({
+              where: { id: listing.id },
             });
+            if (!current.paymentId || current.paymentId === resourceId) {
+              await tx.listing.updateMany({
+                where: {
+                  id: listing.id,
+                  OR: [{ paymentId: resourceId }, { paymentId: null }],
+                },
+                data: {
+                  ...(["CLOSED", "CANCELLED"].includes(current.status)
+                    ? {}
+                    : { status: "REJECTED", reviewed: false }),
+                  affiliateVoidedAt: new Date(),
+                },
+              });
+              await reversePartner(tx, current);
+            }
+          }
           await tx.audit.create({
             data: {
               id: eventId,

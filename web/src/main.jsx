@@ -1,3 +1,4 @@
+import { CouponField, PartnerDashboard, AdminPartners } from "./Partners.jsx";
 import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -230,6 +231,11 @@ function App() {
           ) : (
             <button className="text-button" onClick={() => setModal("auth")}>
               Entrar
+            </button>
+          )}
+          {user?.partner && (
+            <button className="text-button" onClick={() => go("partner")}>
+              Área do parceiro
             </button>
           )}
           <button className="primary small" onClick={announce}>
@@ -629,6 +635,8 @@ function App() {
             </section>
           </main>
         </>
+      ) : view === "partner" ? (
+        <PartnerDashboard request={api} />
       ) : view === "owner" ? (
         <Owner config={config} setError={setError} />
       ) : (
@@ -918,7 +926,19 @@ function Owner({ config, setError }) {
     [busy, setBusy] = useState(false),
     [feedback, setFeedback] = useState(""),
     [purpose, setPurpose] = useState("SALE"),
-    [plan, setPlan] = useState("BASIC");
+    [plan, setPlan] = useState("BASIC"),
+    [couponQuote, setCouponQuote] = useState(null),
+    [couponPending, setCouponPending] = useState(false);
+  useEffect(() => {
+    if (!show) {
+      setCouponQuote(null);
+      setCouponPending(false);
+    }
+  }, [show]);
+  const promotion = couponQuote?.plan === plan ? couponQuote : null;
+  const finalAdPrice =
+    promotion?.finalPrice ??
+    (plan === "BASIC" ? config.adPrice : config.featuredPrice);
   const photoRef = useRef(photos);
   photoRef.current = photos;
   useEffect(
@@ -950,7 +970,11 @@ function Owner({ config, setError }) {
       if (checkout) window.location.assign(d.url);
       else {
         await load();
-        if (!d.paid)
+        if (d.reversed)
+          setError(
+            "O pagamento deste anúncio foi estornado. Fale com o corretor.",
+          );
+        else if (!d.paid)
           setError(
             "Pagamento ainda não confirmado pelo provedor. Tente novamente após a compensação.",
           );
@@ -991,6 +1015,11 @@ function Owner({ config, setError }) {
             e.preventDefault();
             setBusy(true);
             setFeedback("");
+            if (couponPending) {
+              setFeedback("Aplique o cupom ou remova-o antes de continuar.");
+              setBusy(false);
+              return;
+            }
             if (!config.commercialEnabled) {
               setFeedback(
                 "A contratação está temporariamente indisponível. Fale com Lourival para anunciar.",
@@ -1031,6 +1060,12 @@ function Owner({ config, setError }) {
                   images,
                   termsAccepted: f.termsAccepted === "on",
                   termsVersion: config.termsVersion,
+                  ...(promotion
+                    ? {
+                        couponCode: promotion.code,
+                        couponVersion: promotion.version,
+                      }
+                    : {}),
                 },
                 (listing) => {
                   setItems((previous) => [listing, ...previous]);
@@ -1144,7 +1179,11 @@ function Owner({ config, setError }) {
                   type="radio"
                   name="plan"
                   checked={plan === v}
-                  onChange={() => setPlan(v)}
+                  onChange={() => {
+                    setPlan(v);
+                    setCouponQuote(null);
+                    setCouponPending(false);
+                  }}
                 />
                 <strong>
                   {t} · {money(p)}
@@ -1156,12 +1195,18 @@ function Owner({ config, setError }) {
               </label>
             ))}
           </div>
+          <CouponField
+            key={plan}
+            request={api}
+            plan={plan}
+            onChange={setCouponQuote}
+            onPendingChange={setCouponPending}
+          />
           <PaymentFields />
           <h3>Condições comerciais</h3>
           <p>
-            Anúncio:{" "}
-            {money(plan === "BASIC" ? config.adPrice : config.featuredPrice)}.
-            Comissão:{" "}
+            Anúncio: {money(finalAdPrice)}
+            {promotion && ` com o cupom ${promotion.code}`}. Comissão:{" "}
             {(
               (purpose === "SALE"
                 ? config.saleCommissionBps
@@ -1177,13 +1222,16 @@ function Owner({ config, setError }) {
           <div className="terms-text">
             {config.terms?.[purpose]?.replace(
               (config.adPrice / 100).toFixed(2),
-              (
-                (plan === "BASIC" ? config.adPrice : config.featuredPrice) / 100
-              ).toFixed(2),
+              (finalAdPrice / 100).toFixed(2),
             ) || "Condições ainda não configuradas."}
           </div>
           <label className="checkbox">
-            <input name="termsAccepted" type="checkbox" required />
+            <input
+              key={`${plan}-${purpose}-${promotion?.code || ""}-${promotion?.version || ""}-${finalAdPrice}`}
+              name="termsAccepted"
+              type="checkbox"
+              required
+            />
             Li e aceito as condições e autorizo a intermediação e o uso das
             imagens.
           </label>
@@ -1201,6 +1249,11 @@ function Owner({ config, setError }) {
               </a>
             </div>
           )}
+          {couponPending && (
+            <p className="notice" role="status">
+              Aplique o cupom ou remova-o para continuar com o cadastro.
+            </p>
+          )}
           {feedback && (
             <div className="notice error" role="alert">
               {feedback}
@@ -1211,7 +1264,7 @@ function Owner({ config, setError }) {
             aria-describedby={
               !config.commercialEnabled ? "checkout-unavailable" : undefined
             }
-            disabled={busy || !config.commercialEnabled}
+            disabled={busy || couponPending || !config.commercialEnabled}
           >
             {busy
               ? "Preparando pagamento…"
@@ -1236,11 +1289,16 @@ function Owner({ config, setError }) {
               </p>
               <p>
                 {money(l.adPrice)} ·{" "}
-                {l.paidAt ? "Pagamento confirmado" : "Pagamento pendente"} ·
-                Comissão contratada: {l.commissionBps / 100}%
+                {l.affiliateVoidedAt
+                  ? "Pagamento estornado"
+                  : l.paidAt
+                    ? "Pagamento confirmado"
+                    : "Pagamento pendente"}{" "}
+                · Comissão contratada: {l.commissionBps / 100}%
+                {l.couponCode && ` · cupom ${l.couponCode}`}
               </p>
             </div>
-            {!l.paidAt && (
+            {!l.paidAt && !l.affiliateVoidedAt && (
               <div className="action-stack">
                 <button
                   className="primary small"
@@ -1382,6 +1440,7 @@ function Admin({ config, setError, onConfigChange }) {
           ["leads", "Contatos e visitas"],
           ["audit", "Histórico"],
           ["settings", "Configurações"],
+          ["partners", "Parceiros e cupons"],
           ["test-checkout", "Teste Mercado Pago"],
         ].map(([v, l]) => (
           <button
@@ -1393,7 +1452,9 @@ function Admin({ config, setError, onConfigChange }) {
           </button>
         ))}
       </div>
-      {tab === "test-checkout" ? (
+      {tab === "partners" ? (
+        <AdminPartners request={api} />
+      ) : tab === "test-checkout" ? (
         <TestCheckout request={api} />
       ) : tab === "settings" ? (
         <CommercialSettings request={api} onConfigChange={onConfigChange} />
@@ -1409,8 +1470,12 @@ function Admin({ config, setError, onConfigChange }) {
                 <p>Endereço privado: {l.privateAddress}</p>
                 <p>
                   {statusNames[l.status]} ·{" "}
-                  {l.paidAt ? "Pagamento confirmado" : "Pagamento pendente"} ·{" "}
-                  {money(l.adPrice)}
+                  {l.affiliateVoidedAt
+                    ? "Pagamento estornado"
+                    : l.paidAt
+                      ? "Pagamento confirmado"
+                      : "Pagamento pendente"}{" "}
+                  · {money(l.adPrice)}
                 </p>
               </div>
               <div className="action-stack">

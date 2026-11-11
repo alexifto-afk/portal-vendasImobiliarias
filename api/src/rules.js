@@ -31,6 +31,7 @@ export function isPublic(listing, now = new Date()) {
     listing.status === "PUBLISHED" &&
     listing.reviewed &&
     Boolean(listing.paidAt) &&
+    !listing.affiliateVoidedAt &&
     new Date(listing.expiresAt) > now
   );
 }
