@@ -1,3 +1,5 @@
+import Reports, { PdfButton } from "./Reports.jsx";
+import ListingGallery from "./ListingGallery.jsx";
 import StateCityFields from "./StateCityFields.jsx";
 import RecordsTable from "./RecordsTable.jsx";
 import RenewListing from "./RenewListing.jsx";
@@ -569,18 +571,16 @@ function App() {
               <div className="property-grid">
                 {visible.map((l) => (
                   <article className="property-card" key={l.id}>
-                    <button
-                      className="card-image"
-                      onClick={() => {
+                    <ListingGallery
+                      images={l.images}
+                      title={l.title}
+                      Photo={Photo}
+                      card
+                      onOpen={() => {
                         setSelected(l);
                         setModal("property");
                       }}
                     >
-                      <Photo
-                        src={l.images[0]}
-                        alt={l.title}
-                        loading={visible.indexOf(l) < 3 ? "eager" : "lazy"}
-                      />
                       <span className="image-tag">
                         {offline
                           ? "Exemplo"
@@ -589,10 +589,12 @@ function App() {
                             : "À venda"}
                       </span>
                       <span className="image-type">{typeNames[l.type]}</span>
-                      <span className="image-arrow">
-                        <ArrowUpRight size={21} />
-                      </span>
-                    </button>
+                      {l.images.length < 2 && (
+                        <span className="image-arrow">
+                          <ArrowUpRight size={21} />
+                        </span>
+                      )}
+                    </ListingGallery>
                     <div className="card-content">
                       <div className="card-location">
                         <MapPin size={13} />
@@ -978,8 +980,7 @@ function Property({ listing: l, demo }) {
   const realEstate = (l.category || categoryFor(l.type)) === "REAL_ESTATE";
   return (
     <>
-      <div className="property-detail-cover">
-        <Photo className="detail-cover" src={l.images[0]} alt={l.title} />
+      <ListingGallery images={l.images} title={l.title} Photo={Photo}>
         {!demo && realEstate && (
           <button
             type="button"
@@ -990,7 +991,7 @@ function Property({ listing: l, demo }) {
             <MapIcon size={19} /> Mapa
           </button>
         )}
-      </div>
+      </ListingGallery>
       {mapOpen && (
         <ApproximateRegionMap
           listing={l}
@@ -1012,13 +1013,6 @@ function Property({ listing: l, demo }) {
       <p className="description">
         {l.description || "Anúncio ilustrativo. Não se trata de oferta real."}
       </p>
-      {l.images.length > 1 && (
-        <div className="gallery">
-          {l.images.slice(1).map((src) => (
-            <Photo key={src} src={src} alt="Outra foto do anúncio" />
-          ))}
-        </div>
-      )}
       {!demo && !realEstate && <ListingRegionMap key={l.id} listing={l} />}
       {demo ? (
         <div className="notice">
@@ -1254,6 +1248,13 @@ function Owner({ config, setError, onListingChange }) {
                 </p>
               </div>
               <div className="action-stack listing-manage-actions">
+                {l.paidAt && !l.affiliateVoidedAt && (
+                  <PdfButton
+                    request={api}
+                    path={`/receipts/listings/${l.id}`}
+                    filename={`recibo-anuncio-${l.id}.pdf`}
+                  />
+                )}
                 {lifecycle.editable && managementReady && (
                   <button
                     className="outline small"
@@ -1368,7 +1369,7 @@ function Owner({ config, setError, onListingChange }) {
           </p>
           <RecordsTable
             label="Divulgações anteriores"
-            headings={["Anúncio", "Vencimento", "Divulgação"]}
+            headings={["Anúncio", "Vencimento", "Divulgação", "Recibo"]}
             rows={previousPeriods}
             empty="Nenhuma divulgação anterior."
             render={(item) => (
@@ -1380,6 +1381,15 @@ function Owner({ config, setError, onListingChange }) {
                     : "Sem publicação"}
                 </td>
                 <td>{money(item.adPrice)}</td>
+                <td>
+                  {item.paidAt && !item.affiliateVoidedAt && (
+                    <PdfButton
+                      request={api}
+                      path={`/receipts/listings/${item.id}`}
+                      filename={`recibo-anuncio-${item.id}.pdf`}
+                    />
+                  )}
+                </td>
               </tr>
             )}
           />
@@ -1503,6 +1513,7 @@ function Admin({ config, setError, onConfigChange, userName }) {
           ["customers", "Clientes cadastrados"],
           ["leads", "Contatos antigos"],
           ["audit", "Histórico"],
+          ["reports", "Relatórios PDF"],
           ["settings", "Configurações"],
           ["partners", "Parceiros e cupons"],
           ["test-checkout", "Teste Mercado Pago"],
@@ -1514,7 +1525,9 @@ function Admin({ config, setError, onConfigChange, userName }) {
         aria-labelledby={`admin-tab-${tab}`}
         tabIndex={0}
       >
-        {tab === "customers" ? (
+        {tab === "reports" ? (
+          <Reports request={api} />
+        ) : tab === "customers" ? (
           <Customers request={api} onOpenPartners={() => setTab("partners")} />
         ) : tab === "partners" ? (
           <AdminPartners request={api} />
@@ -1546,6 +1559,13 @@ function Admin({ config, setError, onConfigChange, userName }) {
                   </p>
                 </div>
                 <div className="action-stack">
+                  {l.paidAt && !l.affiliateVoidedAt && (
+                    <PdfButton
+                      request={api}
+                      path={`/receipts/listings/${l.id}`}
+                      filename={`recibo-anuncio-${l.id}.pdf`}
+                    />
+                  )}
                   {l.status === "PENDING" && (
                     <button
                       className="outline small"

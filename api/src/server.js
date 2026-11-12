@@ -1,3 +1,4 @@
+import { registerReportingRoutes } from "./reporting.js";
 import { registerLocationRoutes } from "./locations.js";
 import { registerListingLifecycle } from "./listing-lifecycle.js";
 import { registerListingRegionRoutes } from "./listing-region.js";
@@ -155,6 +156,7 @@ async function mp(path, options = {}) {
   }
 }
 registerVehicleCatalog(app, { wrap });
+registerReportingRoutes(app, { db, auth, admin, wrap });
 registerLocationRoutes(app, { wrap });
 registerListingRegionRoutes(app, { db, wrap, publicWhere });
 app.get("/api/health", (_q, r) => r.json({ ok: true }));
