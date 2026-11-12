@@ -2555,3 +2555,30 @@ footer .brand-tagline {
     grid-template-columns: 1fr;
   }
 }
+.vehicle-catalog-fields {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.vehicle-catalog-fields select {
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+
+.listing-region-map {
+  margin: 24px 0;
+  padding: 18px;
+  border: 1px solid #dfdcec;
+  border-radius: 12px;
+}
+.listing-region-map iframe {
+  display: block;
+  width: 100%;
+  height: 300px;
+  border: 0;
+  border-radius: 10px;
+  margin: 14px 0;
+}
+.listing-region-map .text-button {
+  display: inline-flex;
+  margin-top: 12px;
+}

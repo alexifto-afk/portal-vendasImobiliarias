@@ -1,3 +1,5 @@
+import VehicleFields from "./VehicleFields.jsx";
+import MaskedInput from "./MaskedInput.jsx";
 import React, { useEffect, useRef, useState } from "react";
 import {
   categories,
@@ -86,10 +88,12 @@ export default function ListingWizard({
     formRef.current?.querySelector(`[data-step="${step}"] h3`)?.focus();
   }, [step]);
   function input(name, label, props = {}) {
+    const Component = name === "ownerPhone" ? MaskedInput : "input";
     return (
       <label className="field">
         <span>{label}</span>
-        <input
+        <Component
+          {...(name === "ownerPhone" ? { mask: "phone" } : {})}
           name={name}
           value={values[name]}
           onChange={(e) => setValues((v) => ({ ...v, [name]: e.target.value }))}
@@ -107,6 +111,15 @@ export default function ListingWizard({
     if (invalid) {
       setStep(index);
       requestAnimationFrame(() => invalid.reportValidity());
+      return false;
+    }
+    if (
+      index === 1 &&
+      vehicle &&
+      (!values.brand.trim() || !values.model.trim() || !values.year)
+    ) {
+      setStep(1);
+      setError("Selecione marca, modelo e ano do veículo antes de continuar.");
       return false;
     }
     if (index === 2 && !photos.length) {
@@ -259,7 +272,14 @@ export default function ListingWizard({
             <select
               value={values.type}
               onChange={(e) =>
-                setValues((v) => ({ ...v, type: e.target.value }))
+                setValues((v) => ({
+                  ...v,
+                  type: e.target.value,
+                  brand: "",
+                  model: "",
+                  year: "",
+                  mileage: "",
+                }))
               }
             >
               {Object.entries(categories[category].types).map(([id, label]) => (
@@ -323,30 +343,18 @@ export default function ListingWizard({
               </>
             ) : (
               <>
-                {input("brand", "Marca" + (vehicle ? "" : " (opcional)"), {
-                  required: vehicle,
-                  maxLength: 60,
-                })}
-                {input("model", "Modelo" + (vehicle ? "" : " (opcional)"), {
-                  required: vehicle,
-                  maxLength: 100,
-                })}
-                {vehicle && (
+                {vehicle ? (
+                  <VehicleFields
+                    key={values.type}
+                    type={values.type}
+                    values={values}
+                    setValues={setValues}
+                    request={request}
+                  />
+                ) : (
                   <>
-                    {input("year", "Ano", {
-                      type: "number",
-                      required: true,
-                      min: "1900",
-                      max: new Date().getFullYear() + 1,
-                      step: "1",
-                    })}
-                    {input("mileage", "Quilometragem (km)", {
-                      type: "number",
-                      required: true,
-                      min: "0",
-                      max: "10000000",
-                      step: "1",
-                    })}
+                    {input("brand", "Marca (opcional)", { maxLength: 60 })}
+                    {input("model", "Modelo (opcional)", { maxLength: 100 })}
                   </>
                 )}
                 <label className="field">

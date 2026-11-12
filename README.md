@@ -180,3 +180,7 @@ Veja [RECUPERAR-SENHA.md](RECUPERAR-SENHA.md) para ativar o código de recupera�
 ## Identidade Negocieê
 
 Veja [IDENTIDADE-NEGOCIEE.md](IDENTIDADE-NEGOCIEE.md) para a marca aprovada, cores, arquivos de logomarca/ícone, aplicação nas telas e atualização dos nomes de e-mail e checkout.
+
+## Veículos, máscaras e mapa
+
+Veja [VEICULOS-MASCARAS-E-MAPA.md](VEICULOS-MASCARAS-E-MAPA.md) para as listas de marca/modelo/ano, preenchimento manual alternativo, máscaras de CPF/telefone nos formulários e mapa da região nos detalhes dos anúncios de móveis e imóveis.
