@@ -316,7 +316,7 @@ function App() {
         <>
           <section className="catalog-intro container">
             <div>
-              <div className="kicker">IMÓVEIS NO TOCANTINS</div>
+              <div className="kicker">IMÓVEIS e ITENS EM GERAL</div>
               <p className="catalog-brand-slogan">{brandSlogan}</p>
               <h1>Qual imóvel você procura?</h1>
               <p>
