@@ -78,11 +78,11 @@ export function PhotoPicker({ photos, setPhotos, disabled, request }) {
   };
   return (
     <fieldset className="photo-picker" disabled={disabled}>
-      <legend>Fotos do imóvel</legend>
+      <legend>Fotos do anúncio</legend>
       <p>Selecione de 1 a 12 fotos. A primeira será a capa do anúncio.</p>
       <label className="photo-drop">
         <Upload size={25} />
-        <strong>Selecionar fotos do imóvel</strong>
+        <strong>Selecionar fotos do anúncio</strong>
         <span>
           Do computador ou celular · JPG, PNG ou WebP · até 8 MB por foto
         </span>
@@ -91,7 +91,7 @@ export function PhotoPicker({ photos, setPhotos, disabled, request }) {
           accept="image/jpeg,image/png,image/webp"
           multiple
           onChange={add}
-          aria-label="Selecionar fotos do imóvel"
+          aria-label="Selecionar fotos do anúncio"
         />
       </label>
       {error && (
@@ -102,8 +102,44 @@ export function PhotoPicker({ photos, setPhotos, disabled, request }) {
       <div className="photo-previews">
         {photos.map((photo, index) => (
           <div className="photo-preview" key={photo.key}>
-            <img src={photo.preview} alt={`Foto ${index + 1} do imóvel`} />
+            <img src={photo.preview} alt={`Foto ${index + 1} do anúncio`} />
             <span>{index === 0 ? "Capa" : `Foto ${index + 1}`}</span>
+            <div className="photo-order-actions">
+              <button
+                type="button"
+                disabled={index === 0}
+                aria-label={`Mover foto ${index + 1} para antes`}
+                onClick={() =>
+                  setPhotos((previous) => {
+                    const next = [...previous];
+                    [next[index - 1], next[index]] = [
+                      next[index],
+                      next[index - 1],
+                    ];
+                    return next;
+                  })
+                }
+              >
+                ←
+              </button>
+              <button
+                type="button"
+                disabled={index === photos.length - 1}
+                aria-label={`Mover foto ${index + 1} para depois`}
+                onClick={() =>
+                  setPhotos((previous) => {
+                    const next = [...previous];
+                    [next[index], next[index + 1]] = [
+                      next[index + 1],
+                      next[index],
+                    ];
+                    return next;
+                  })
+                }
+              >
+                →
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => remove(photo)}

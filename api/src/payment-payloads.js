@@ -93,7 +93,7 @@ export function preferencePayload(
       {
         id: listing.id,
         title: `${brandName} · Anúncio por ${listing.durationDays} dias: ${listing.title}`,
-        description: `Serviço de divulgação de um imóvel no plano ${listing.plan === "FEATURED" ? "Destaque" : "Divulgação"} por ${listing.durationDays} dias. Atendimento e intermediação contratados separadamente.`,
+        description: `Serviço de divulgação de anúncio no plano ${listing.plan === "FEATURED" ? "Destaque" : "Divulgação"} por ${listing.durationDays} dias. Negociação direta com o anunciante, sem comissão nos novos anúncios.`,
         category_id: "services",
         quantity: 1,
         currency_id: "BRL",
@@ -140,7 +140,7 @@ export function testOrderPayload(reference, amount, options = {}) {
         external_code: "PORTAL-TEST-ADVERTISEMENT",
         title: `Compra de teste do ${brandName}`,
         description:
-          "Simulação do serviço de divulgação de imóvel. Não publica anúncio nem registra receita real.",
+          "Simulação do serviço de divulgação de anúncio. Não publica anúncio nem registra receita real.",
         category_id: "services",
         unit_price: amount,
         quantity: 1,

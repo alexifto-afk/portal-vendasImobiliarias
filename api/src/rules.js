@@ -1,8 +1,6 @@
-export const TERMS_VERSION = "2026-11-v1";
-export function terms(config, purpose) {
-  const rate =
-    purpose === "RENT" ? config.rentCommissionBps : config.saleCommissionBps;
-  return `Autorizo a divulgação do imóvel por ${config.durationDays} dias após a aprovação e confirmação do pagamento de R$ ${(config.adPrice / 100).toFixed(2)}. O anúncio não garante a negociação. Autorizo ${config.brokerName} (${config.brokerCreci}) a intermediar contatos, visitas e propostas. O contato público será exclusivamente o do intermediador. A comissão, de responsabilidade do proprietário, será de ${(rate / 100).toFixed(2)}% sobre ${purpose === "RENT" ? "o valor de um aluguel mensal" : "o preço final de venda"}, conforme contrato de intermediação a ser firmado. Este aceite registra as condições comerciais e não substitui a revisão e assinatura do contrato. Declaro ter autorização para anunciar e autorizar o uso das imagens. Os dados privados serão utilizados para atendimento e gestão da negociação. A contratação deve prever os efeitos de cancelamento, reembolso e os direitos legais aplicáveis.`;
+export const TERMS_VERSION = "2026-11-classifieds-v2";
+export function terms(config) {
+  return `Contrato a divulgação do anúncio no Negocieê por ${config.durationDays} dias após a aprovação e confirmação do pagamento de R$ ${(config.adPrice / 100).toFixed(2)}. O valor remunera somente a divulgação e não garante venda ou aluguel. Não há comissão de intermediação para este anúncio. A negociação, entrega, visita e pagamento do produto são combinados diretamente entre anunciante e interessado. Autorizo o uso das imagens e a disponibilização do WhatsApp informado no anúncio para contato direto. Declaro ter autorização para anunciar e ser responsável pela veracidade das informações. O endereço completo, CPF e e-mail da conta não serão publicados. Não há renovação automática. Cancelamento, reembolso e direitos legais aplicáveis devem ser respeitados.`;
 }
 export function commission(amount, bps) {
   if (
@@ -40,6 +38,10 @@ export const publicFields = {
   title: true,
   description: true,
   type: true,
+  category: true,
+  state: true,
+  details: true,
+  contactMode: true,
   purpose: true,
   city: true,
   neighborhood: true,

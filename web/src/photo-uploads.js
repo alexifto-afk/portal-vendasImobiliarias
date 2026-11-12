@@ -11,7 +11,7 @@ export function validatePhotoFiles(files, existing = 0) {
   }
 }
 export async function uploadSelectedPhotos(photos, request, onUploaded) {
-  if (!photos.length) throw Error("Selecione pelo menos uma foto do imóvel.");
+  if (!photos.length) throw Error("Selecione pelo menos uma foto do anúncio.");
   const urls = [];
   for (const photo of photos) {
     if (photo.url) {

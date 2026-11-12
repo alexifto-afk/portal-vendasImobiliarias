@@ -77,7 +77,7 @@ export default function TestCheckout({ request }) {
       <h2>Compra de teste do Mercado Pago</h2>
       <p>
         Gere uma ordem de R$ 10,00 para simular o pagamento e obter o Order ID
-        solicitado pelo Developers. Este fluxo não publica imóveis nem registra
+        solicitado pelo Developers. Este fluxo não publica anúncios nem registra
         receita no portal.
       </p>
       {!data ? (

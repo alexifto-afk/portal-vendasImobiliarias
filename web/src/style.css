@@ -2405,3 +2405,153 @@ footer .brand-tagline {
     padding-right: 10px;
   }
 }
+
+/* Classifieds catalog and guided ad registration. */
+.catalog-fields {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.catalog-categories {
+  flex-wrap: wrap;
+}
+.catalog-categories button {
+  white-space: normal;
+}
+.wizard-fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.wizard-fields section[hidden] {
+  display: none;
+}
+.wizard-progress {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 10px;
+  margin: 24px 0;
+}
+.wizard-progress li {
+  flex: 1;
+  color: var(--muted);
+  font-size: 12px;
+  border-bottom: 3px solid #e4e2f0;
+  padding-bottom: 10px;
+}
+.wizard-progress li span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #efedf9;
+  margin-right: 6px;
+}
+.wizard-progress .current {
+  color: #5845f5;
+  border-color: #5845f5;
+  font-weight: 700;
+}
+.wizard-progress .complete {
+  border-color: #18cdba;
+}
+.classified-category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 22px 0;
+}
+.classified-category-grid button {
+  padding: 20px;
+  text-align: left;
+  border: 1px solid #dcd9ed;
+  border-radius: 12px;
+  background: white;
+  min-height: 100px;
+}
+.classified-category-grid button.chosen {
+  background: #f1efff;
+  border: 2px solid #5845f5;
+}
+.classified-category-grid small {
+  display: block;
+  margin-top: 8px;
+  color: #646276;
+  line-height: 1.5;
+}
+.wizard-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 25px;
+}
+.listing-review {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 20px;
+  background: #f5f4fb;
+  border-radius: 12px;
+}
+.listing-review img {
+  width: 140px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.listing-review p {
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+}
+.legacy-contact {
+  padding: 15px 0;
+  max-width: 440px;
+}
+.photo-order-actions {
+  position: absolute;
+  bottom: 7px;
+  right: 7px;
+  display: flex;
+  gap: 5px;
+}
+.photo-order-actions button {
+  position: static;
+  width: 28px;
+  height: 28px;
+  background: white;
+  color: #27223f;
+  border-radius: 6px;
+}
+.photo-order-actions button:disabled {
+  opacity: 0.4;
+}
+@media (max-width: 760px) {
+  .catalog-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .classified-category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .wizard-progress {
+    gap: 5px;
+  }
+  .wizard-progress li {
+    font-size: 0;
+  }
+  .wizard-progress li span {
+    font-size: 12px;
+  }
+  .listing-review {
+    flex-direction: column;
+  }
+  .wizard-actions {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 430px) {
+  .catalog-fields {
+    grid-template-columns: 1fr;
+  }
+}

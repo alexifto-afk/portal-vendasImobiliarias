@@ -140,7 +140,7 @@ function ConvertCustomer({ user, onSave }) {
             disabled={hasContent}
             onChange={(e) => setKeep(e.target.checked)}
           />
-          Manter também o acesso de cliente para anunciar imóveis
+          Manter também o acesso de cliente para criar anúncios
         </label>
       )}
       <div className="notice">

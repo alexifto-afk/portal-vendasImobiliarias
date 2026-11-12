@@ -78,7 +78,7 @@ test("projeção pública não inclui contatos privados, proprietário ou endere
   ])
     assert.equal(field in publicFields, false);
 });
-test("condições distinguem venda de aluguel e preservam preço de divulgação", () => {
+test("condições de classificados removem comissão, autorizam contato e preservam preço", () => {
   const c = {
     durationDays: 30,
     adPrice: 5990,
@@ -87,7 +87,11 @@ test("condições distinguem venda de aluguel e preservam preço de divulgação
     saleCommissionBps: 600,
     rentCommissionBps: 10000,
   };
-  assert.match(terms(c, "SALE"), /6.00% sobre o preço final de venda/);
-  assert.match(terms(c, "RENT"), /100.00% sobre o valor de um aluguel mensal/);
+  assert.match(terms(c, "SALE"), /Não há comissão/);
+  assert.match(
+    terms(c, "SALE"),
+    /WhatsApp informado no anúncio para contato direto/,
+  );
+  assert.match(terms(c, "RENT"), /Não há comissão/);
   assert.match(terms(c, "SALE"), /59.90/);
 });
