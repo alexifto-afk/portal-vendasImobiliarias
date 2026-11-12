@@ -2,7 +2,7 @@
 
 **Seu lugar para comprar, vender e alugar.**
 
-Sistema independente de divulgação e intermediação de casas, lotes e fazendas no Tocantins. **Não compartilha tabelas, credenciais nem implantação com o sistema ALP.**
+Portal independente de classificados: imóveis, veículos, eletrônicos, móveis, eletrodomésticos, equipamentos rurais e outros produtos, com contato direto pelo WhatsApp do anunciante. **Não compartilha tabelas, credenciais nem implantação com o sistema ALP.**
 
 - Frontend React/Vite em `web/` para Vercel.
 - API Express/Prisma em `api/` para Render.
@@ -11,29 +11,27 @@ Sistema independente de divulgação e intermediação de casas, lotes e fazenda
 
 ## Configuração comercial
 
-Lourival Missias Pereira · WhatsApp 55 63 99991-5770 · CRECI informado pelo responsável: 778D-22. A aplicação não consultou nem verificou esse registro.
+O Negocieê cobra somente pela divulgação dos novos anúncios, sem comissão de intermediação. Planos, cupons e créditos dos parceiros continuam ativos. Veja [CLASSIFICADOS.md](CLASSIFICADOS.md) para implantação e tratamento dos anúncios antigos.
 
 | Plano      | Preço    | Prazo   |
 | ---------- | -------- | ------- |
 | Divulgação | R$ 29,90 | 30 dias |
 | Destaque   | R$ 59,90 | 30 dias |
 
-Destaque aparece antes dos anúncios básicos. O prazo começa na primeira aprovação, após confirmação do pagamento. Reaprovar não reinicia o prazo. Não há renovação automática. Comissão é separada do anúncio e de responsabilidade do proprietário, sobre venda final ou um aluguel mensal, conforme configuração e contrato. O aceite guarda texto integral, versão, condições, data e vínculo ao usuário. Alterar a configuração não muda anúncios anteriores.
+Destaque aparece antes dos anúncios básicos. O prazo começa na primeira aprovação após confirmação do pagamento. Reaprovar não reinicia o prazo. Não há renovação automática. O aceite guarda texto integral, versão, condições, data e vínculo ao usuário. Registros e condições antigas são preservados.
 
-**Comissões começam em zero e contratações ficam desativadas. Não foi presumida nenhuma “taxa obrigatória do CRECI-TO”.** Confirme as condições aplicáveis e o contrato de intermediação antes de configurar os percentuais. O aceite eletrônico implementado não é assinatura digital de contrato completo.
+A contratação exige ativação, credenciais de produção do Mercado Pago e preços válidos. Percentuais de comissão não são mais usados para novos anúncios.
 
 ## O que está implementado
 
-- Catálogo público, filtros por finalidade, tipo e cidade, detalhes e galeria.
-- Cadastro/login com senha protegida por bcrypt; administradores criados exclusivamente por seed.
-- Cadastro de anúncio com dados privados, upload de fotos JPG, PNG ou WebP, plano e aceite das condições.
-- Checkout Pro do Mercado Pago; o backend consulta pagamentos aprovados, validando modo real, valor, moeda, destinatário e referência. Retorno de navegador não confirma pagamento.
-- Aprovação pelo corretor somente após confirmação do pagamento. Anúncios vencidos deixam de aparecer.
-- Contato público exclusivamente de Lourival; nome e telefone do proprietário e endereço completo são omitidos da resposta pública.
-- Registro de interesse antes de continuar no WhatsApp; etapas de atendimento, data de visita e notas de propostas.
-- Registro de fechamento, comissão calculada em centavos e baixa manual após conferência do crédito.
-- Resumo da negociação para imprimir/salvar em PDF e completar com profissional habilitado.
-- Histórico de ações administrativas.
+- Catálogo com pesquisa por texto, categoria, tipo, finalidade, cidade, estado e preço.
+- Cadastro/login, perfil, recuperação de senha por e-mail e painel com nome do usuário e botão Sair.
+- Novo anúncio em cinco etapas, campos por categoria, até 12 fotos com reordenação e escolha de capa.
+- Checkout Pro por Preferences, confirmação autenticada do pagamento e revisão administrativa antes da publicação.
+- Contato direto pelo WhatsApp autorizado no anúncio. Anúncios antigos exigem autorização do responsável antes de disponibilizar o número antes privado.
+- Encerramento de anúncio pelo anunciante, sem registro de comissão para novos anúncios.
+- Parceiros, cupons, créditos, solicitações de saque e baixa manual do Pix. O sistema não transfere dinheiro automaticamente.
+- Gerenciamento de clientes e histórico de ações administrativas. Negociações antigas mantêm seus registros e ferramentas históricas.
 
 ## Rodar localmente
 
@@ -90,7 +88,7 @@ Configure:
 - `NODE_ENV=production`.
 - Dados do corretor e valores: defaults estão em `render.yaml` e `.env.example`.
 
-Migrations e seed são executados uma vez de forma controlada, localmente contra o Neon ou por shell com acesso ao banco. **Não rode o seed a cada deploy.** Configure nome, e-mail e senha do administrador, execute `npm run seed` e remova `ADMIN_PASSWORD` do ambiente quando concluir. O seed não substitui credenciais existentes.
+As migrações pendentes são aplicadas pelo `npm start` antes de iniciar a API. O seed deve ser executado uma vez de forma controlada, localmente contra o Neon ou por shell com acesso ao banco. **Não rode o seed a cada deploy.** Configure nome, e-mail e senha do administrador, execute `npm run seed` e remova `ADMIN_PASSWORD` do ambiente quando concluir. O seed não substitui credenciais existentes.
 
 O serviço gratuito pode suspender por inatividade; o primeiro acesso pode demorar. Para disponibilidade comercial constante, avalie um serviço adequado. As novas fotos são armazenadas no PostgreSQL Neon, sem depender do disco do Render. O armazenamento consome a cota do banco. Anúncios antigos com URLs externas continuam funcionando.
 
@@ -102,30 +100,27 @@ Configure `VITE_API_URL=https://SUA-API.onrender.com/api` e faça deploy. Coloqu
 
 ### 5. Habilitar contratação
 
-1. Valide os dados e a regularidade profissional, regras de comissão e contrato de intermediação com profissional habilitado. Complete condições de cancelamento/reembolso, identificação do controlador e política de dados.
-2. Crie/habilite conta Mercado Pago de quem efetivamente receberá pelo anúncio. Guarde `MP_ACCESS_TOKEN` de produção e `MP_COLLECTOR_ID` da conta no Render. Não coloque no frontend.
-3. Configure `SALE_COMMISSION_BPS` e `RENT_COMMISSION_BPS`. São pontos-base: **600 significa 6%**; **10000 significa 100% de um aluguel mensal**. Esses são exemplos matemáticos, não recomendação de taxa.
-4. Após validação, configure `COMMERCIAL_ENABLED=true` e redeploye. O sistema também exige token, destinatário, percentuais positivos e preços válidos.
-5. Teste o fluxo de ponta a ponta em homologação antes de receber anunciantes reais.
+1. Configure `MP_ACCESS_TOKEN`, `MP_COLLECTOR_ID` e a assinatura do webhook de produção no Render, preservando as credenciais já utilizadas pelo portal.
+2. No administrador, em Configurações, ative a contratação e pagamento de novos anúncios. As variáveis antigas `SALE_COMMISSION_BPS` e `RENT_COMMISSION_BPS` não definem comissão para novos anúncios.
+3. Valide em homologação o anúncio, cupom, pagamento, revisão, contato e encerramento. Não faça testes de cobrança real sem autorização.
 
-## Pagamento, publicação e intermediação
+## Pagamento, publicação e contato direto
 
-1. Proprietário cria conta, cadastra imóvel e aceita as condições vigentes.
-2. Clica em pagar e conclui o checkout do Mercado Pago.
-3. Volta ao painel e clica **Já paguei: verificar**. O corretor também pode consultar o pagamento pelo painel. O webhook assinado também confirma pagamentos; não há conciliação agendada.
-4. O backend consulta o PSP e confirma somente pagamentos aprovados correspondentes ao anúncio e à conta recebedora.
-5. Corretor revisa fotos e texto, remove ofertas com dados privados/contatos no conteúdo reprovando o cadastro, e aprova a publicação.
-6. Interessado registra contato e continua no WhatsApp de Lourival. Clicar no link não envia mensagem automaticamente.
-7. Lourival organiza a visita, registra proposta e fecha com o proprietário e o comprador/locatário.
-8. Registra o fechamento, imprime o resumo para apoiar o contrato e marca a comissão recebida somente após conferir o crédito.
+1. O anunciante cria a conta e preenche as etapas de categoria, detalhes, fotos, localização e revisão/pagamento.
+2. Confirma o WhatsApp que poderá ser acessado pelos interessados, escolhe o plano, aplica eventual cupom e aceita as condições.
+3. Conclui o Checkout Pro. Se o checkout falhar depois do cadastro, o anúncio fica salvo para retomar o pagamento sem duplicação.
+4. O backend confirma o pagamento via webhook assinado ou consulta autenticada, validando valor, moeda, modo real, conta recebedora e referência.
+5. O administrador revisa e aprova a publicação. O interessado usa o botão de contato direto, sem formulário de interesse no portal.
+6. Negociação, pagamento do produto, entrega ou visita são combinados entre as partes. Clicar no WhatsApp não envia mensagem automaticamente.
+7. O anunciante pode encerrar a divulgação no painel quando concluir o negócio. Não há comissão nos novos anúncios.
 
 ## Limites e próximos passos antes de operação real
 
-- Não existe garantia técnica de impedir fechamento por fora. Contrato de intermediação e registros ajudam a comprovar o atendimento, sem garantir cobrança judicial.
-- O resumo de negociação **não é um contrato de compra e venda/locação completo**, não assina documentos e não substitui análise da matrícula, titularidade, escritura ou registro quando aplicáveis.
-- O recebimento de comissão é manual. Não há repasse/split automático para o corretor.
+- O portal não intermedeia nem recebe o pagamento do produto negociado. O Mercado Pago continua recebendo apenas a contratação do anúncio.
+- Saques de parceiros continuam por Pix manual fora do portal, com registro administrativo posterior.
+- Registros de negociações e comissões antigas são históricos, sem recálculo automático ou alteração de contratos aceitos.
 - Reembolsos e chargebacks devem ser acompanhados no Mercado Pago. O webhook de produção processa estornos recebidos e retira o anúncio; não há varredura periódica de reconciliação. Confira entregas e retire o anúncio manualmente se necessário. Uma tentativa paga duplicada não gera novo prazo; confira e devolva duplicidades pelo PSP.
-- Há recuperação de senha por código de e-mail após configurar o remetente. Não há edição/renovação do anúncio pelo anunciante, notificações comerciais automáticas nem assinatura digital. As fotos enviadas são validadas, reduzidas e convertidas para WebP, sem os metadados originais.
+- Há recuperação de senha por código de e-mail após configurar o remetente. O anunciante pode atualizar o contato e encerrar o anúncio; não há edição dos demais campos/renovação, notificações comerciais automáticas nem assinatura digital. As fotos enviadas são validadas, reduzidas e convertidas para WebP, sem os metadados originais.
 - O catálogo retorna até 100 anúncios, o painel até 500 registros e o histórico até 200 eventos recentes. Totais no painel correspondem a essa janela. Paginação e relatórios completos são evolução necessária com aumento de volume.
 - Rate limit é em memória, adequado a instância única; para múltiplas instâncias use armazenamento compartilhado. JWT fica em sessionStorage e expira em 8h; logout remove a sessão do navegador.
 - Imagens de exemplo são externas do Unsplash; fontes do Google Fonts. O catálogo de exemplo só aparece quando a API está indisponível e é identificado. APIs funcionais exigem Neon configurado.
@@ -140,11 +135,11 @@ cd ../web
 npm run build
 ```
 
-Há testes de cálculo, critérios de confirmação financeira, expiração/publicação, projeção pública, autenticação e configuração HTTP. Eles não substituem homologação de checkout, migrations e fluxos com um banco Neon real. Não incluem teste de navegador.
+Há testes de categorias, confirmação financeira, projeção pública, contato autorizado, parceiros, autenticação e configuração. A mudança para classificados também foi validada em PostgreSQL local e no navegador em computador e celular, com checkout simulado; isso não substitui homologação do provedor.
 
 ## Upload de fotos e configuração pelo administrador
 
-Veja [ATUALIZAR-FOTOS.md](ATUALIZAR-FOTOS.md) para aplicar esta atualização e configurar comissões e credenciais de pagamento. O comando `npm start` da API aplica as migrações pendentes antes de iniciar o servidor. Use `npm ci --include=dev && npm run generate` no build do Render para manter o CLI Prisma disponível.
+Veja [ATUALIZAR-FOTOS.md](ATUALIZAR-FOTOS.md) para o histórico da implantação de fotos. A configuração comercial atual está em [CLASSIFICADOS.md](CLASSIFICADOS.md). O comando `npm start` da API aplica as migrações pendentes antes de iniciar o servidor. Use `npm ci --include=dev && npm run generate` no build do Render para manter o CLI Prisma disponível.
 
 ## Compra de teste para obter Order ID no Developers
 

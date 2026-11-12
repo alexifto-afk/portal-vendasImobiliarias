@@ -44,6 +44,10 @@ model Listing {
   title String
   description String
   type String
+  category String @default("REAL_ESTATE")
+  state String @default("TO")
+  details Json @default("{}")
+  contactMode String @default("PRIVATE")
   purpose String
   city String
   neighborhood String
@@ -79,6 +83,7 @@ model Listing {
   deal Deal?
   createdAt DateTime @default(now())
   @@index([status, expiresAt])
+  @@index([category, status, expiresAt])
   @@index([couponId, paidAt])
 }
 model Lead {

@@ -389,6 +389,7 @@ test("anúncio real congela desconto e condições, ignora valores adulterados e
     area: 100,
     bedrooms: 2,
     images: [imagePath],
+    contactAccepted: true,
     termsAccepted: true,
     termsVersion: config.termsVersion,
     couponCode: coupon.code,
@@ -406,7 +407,7 @@ test("anúncio real congela desconto e condições, ignora valores adulterados e
   assert.equal(saved.adPrice, 2490);
   assert.equal(saved.originalAdPrice, 2990);
   assert.equal(saved.partnerReward, 500);
-  assert.equal(saved.commissionBps, 600);
+  assert.equal(saved.commissionBps, 0);
   assert.ok(saved.termsText.includes("24.90"));
   assert.ok(saved.termsText.includes(coupon.code));
   assert.equal(
@@ -420,6 +421,171 @@ test("anúncio real congela desconto e condições, ignora valores adulterados e
     body: JSON.stringify({ ...body, couponVersion: past.toISOString() }),
   });
   assert.equal(stale.status, 409);
+});
+test("classificados publicam produto pago sem comissão, preservam cupom e isolam contato do anunciante", async () => {
+  const root = "http://127.0.0.1:3097/api";
+  const token = (id) => jwt.sign({ sub: id }, secret);
+  const req = async (path, body, user = users.buyer) => {
+    const response = await fetch(root + path, {
+      method: body ? "POST" : "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(user ? { Authorization: "Bearer " + token(user.id) } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    return { status: response.status, data: await response.json() };
+  };
+  const config = (await req("/config", null, null)).data;
+  const photo = await db.imageUpload.create({
+    data: {
+      id: randomUUID(),
+      ownerId: users.buyer.id,
+      mimeType: "image/webp",
+      data: Buffer.from("fixture"),
+    },
+  });
+  const quote = (
+    await call("/coupons/quote", "buyer", { code: coupon.code, plan: "BASIC" })
+  ).data;
+  const body = {
+    title: "Carro econômico de teste",
+    description:
+      "Carro revisado, com documentação regular e detalhes completos.",
+    type: "CAR",
+    purpose: "SALE",
+    plan: "BASIC",
+    city: "Goiânia",
+    state: "GO",
+    neighborhood: "Centro",
+    ownerPhone: "(62) 99999-8888",
+    contactAccepted: true,
+    price: 4500000,
+    details: {
+      brand: "Fiat",
+      model: "Uno",
+      year: 2020,
+      mileage: 40000,
+      condition: "USED",
+    },
+    images: [`/uploads/${photo.id}`],
+    termsAccepted: true,
+    termsVersion: config.termsVersion,
+    couponCode: coupon.code,
+    couponVersion: quote.version,
+    commissionBps: 9999,
+  };
+  assert.equal(
+    (await req("/owner/listings", { ...body, contactAccepted: false })).status,
+    400,
+  );
+  const created = await req("/owner/listings", body);
+  assert.equal(created.status, 201, JSON.stringify(created));
+  const l = created.data;
+  assert.equal(l.category, "VEHICLES");
+  assert.equal(l.commissionBps, 0);
+  assert.equal(l.adPrice, 2490);
+  assert.equal(l.partnerReward, 500);
+  assert.equal(l.area, 0);
+  assert.equal(l.privateAddress, "");
+  assert.equal(
+    (await req(`/listings/${l.id}/contact`, null, null)).status,
+    404,
+  );
+  await db.listing.update({
+    where: { id: l.id },
+    data: { paidAt: new Date(), paymentId: "classified-test-" + randomUUID() },
+  });
+  const paid = await db.listing.findUnique({ where: { id: l.id } });
+  await serial((tx) => creditPartner(tx, paid, paid.paymentId));
+  assert.equal(
+    await db.affiliateEntry.count({ where: { listingId: l.id } }),
+    1,
+  );
+  assert.equal(
+    (
+      await req(
+        `/admin/listings/${l.id}/review`,
+        { approve: true },
+        users.admin,
+      )
+    ).status,
+    200,
+  );
+  const results = await req(
+    "/listings?category=VEHICLES&state=GO&search=econômico",
+    null,
+    null,
+  );
+  assert.ok(results.data.some((item) => item.id === l.id));
+  const publicListing = (await req(`/listings/${l.id}`, null, null)).data;
+  for (const field of ["ownerPhone", "privateAddress", "ownerId", "termsText"])
+    assert.equal(field in publicListing, false);
+  assert.equal(publicListing.details.year, 2020);
+  assert.equal(
+    (
+      await req(
+        `/admin/listings/${l.id}/deal`,
+        {
+          buyerName: "Comprador Teste",
+          sellerName: "Vendedor Teste",
+          finalPrice: 4500000,
+          paymentTerms: "Pagamento negociado diretamente",
+        },
+        users.admin,
+      )
+    ).status,
+    409,
+  );
+  assert.equal(
+    (
+      await req(
+        `/owner/listings/${l.id}/contact`,
+        { ownerPhone: "63999999999", contactAccepted: true },
+        users.admin,
+      )
+    ).status,
+    403,
+  );
+
+  const contact = await req(`/listings/${l.id}/contact`, null, null);
+  assert.match(contact.data.whatsapp, /^https:\/\/wa.me\/5562999998888\?text=/);
+  assert.equal(
+    (
+      await req(
+        `/owner/listings/${l.id}/contact`,
+        { ownerPhone: "63999999999", contactAccepted: true },
+        users.blogger,
+      )
+    ).status,
+    403,
+  );
+  await db.listing.update({
+    where: { id: l.id },
+    data: { contactMode: "PRIVATE" },
+  });
+  assert.equal(
+    (await req(`/listings/${l.id}/contact`, null, null)).status,
+    409,
+  );
+  assert.equal(
+    (
+      await req(`/owner/listings/${l.id}/contact`, {
+        ownerPhone: "62999998888",
+        contactAccepted: true,
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (await req(`/listings/${l.id}/contact`, null, null)).status,
+    200,
+  );
+  assert.equal((await req(`/owner/listings/${l.id}/close`, {})).status, 200);
+  assert.equal(
+    (await req(`/listings/${l.id}/contact`, null, null)).status,
+    404,
+  );
 });
 test("duas reservas simultâneas respeitam a última utilização disponível", async () => {
   const c = await db.coupon.create({

@@ -52,3 +52,45 @@ test("área rural aparece em hectares, casas e lotes em metros quadrados", () =>
   assert.equal(areaLabel({ type: "FARM", area: 960000 }), "96 ha");
   assert.equal(areaLabel({ type: "LOT", area: 360 }), "360 m²");
 });
+test("busca combina categoria, estado e texto dos produtos sem perder imóveis antigos", () => {
+  const mixed = [
+    ...listings,
+    {
+      id: 4,
+      type: "CAR",
+      category: "VEHICLES",
+      state: "GO",
+      title: "Carro econômico",
+      description: "Revisado",
+      details: { brand: "Fiat" },
+      price: 4000000,
+    },
+  ];
+  assert.deepEqual(
+    findListings(mixed, {
+      ...emptyFilters,
+      category: "VEHICLES",
+      state: "GO",
+      search: "economico",
+    }).map((l) => l.id),
+    [4],
+  );
+  assert.deepEqual(
+    findListings(mixed, {
+      ...emptyFilters,
+      category: "REAL_ESTATE",
+      state: "TO",
+    }).map((l) => l.id),
+    [1, 2, 3],
+  );
+  assert.deepEqual(
+    findListings(mixed, { ...emptyFilters, search: "fiat" }).map((l) => l.id),
+    [4],
+  );
+});
+test("catálogo do frontend mantém o mesmo contrato de categorias e tipos da API", async () => {
+  const web = await import("../src/classified-catalog.js");
+  const api = await import("../../api/src/classified-catalog.js");
+  assert.deepEqual(web.categories, api.categories);
+  assert.deepEqual(web.states, api.states);
+});

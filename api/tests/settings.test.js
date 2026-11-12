@@ -15,7 +15,7 @@ const base = {
   saleCommissionBps: 0,
   rentCommissionBps: 0,
 };
-test("configuração comercial exige ativação, percentuais e credenciais sem expor segredos", () => {
+test("configuração comercial exige ativação e credenciais, sem comissão sem expor segredos", () => {
   const saved = {
     saleCommissionBps: 600,
     rentCommissionBps: 10000,
@@ -30,9 +30,9 @@ test("configuração comercial exige ativação, percentuais e credenciais sem e
     MP_COLLECTOR_ID: "private-id",
   });
   assert.equal(ready.config.commercialEnabled, true);
-  assert.equal(ready.config.saleCommissionBps, 600);
+  assert.equal(ready.config.saleCommissionBps, 0);
   assert.ok(!JSON.stringify(ready).includes("private-token"));
-  assert.notEqual(
+  assert.equal(
     ready.termsVersion,
     commercialState(
       base,
@@ -77,7 +77,7 @@ before(async () => {
   url = `http://127.0.0.1:${server.address().port}/api`;
 });
 after(() => server?.close());
-test("somente administrador pode ler ou salvar percentuais; não ativa sem Mercado Pago", async () => {
+test("somente administrador pode configurar cobranças; não ativa sem Mercado Pago", async () => {
   assert.equal((await fetch(url + "/admin/settings")).status, 401);
   assert.equal(
     (
@@ -106,9 +106,7 @@ test("somente administrador pode ler ou salvar percentuais; não ativa sem Merca
   assert.equal(
     (
       await save({
-        saleCommissionBps: -1,
-        rentCommissionBps: 10000,
-        enabled: false,
+        enabled: "false",
       })
     ).status,
     400,
@@ -122,8 +120,27 @@ test("somente administrador pode ler ou salvar percentuais; não ativa sem Merca
   const d = await r.json();
   assert.equal(d.paymentsConfigured, false);
   const current = await (await fetch(url + "/config")).json();
-  assert.equal(current.saleCommissionBps, 600);
-  assert.equal(current.rentCommissionBps, 10000);
+  assert.equal(current.saleCommissionBps, 0);
+  assert.equal(current.rentCommissionBps, 0);
   assert.equal(current.commercialEnabled, false);
-  assert.match(current.terms.SALE, /6.00%/);
+  assert.match(current.terms.SALE, /Não há comissão/);
+});
+
+test("zero de comissão não impede ativação com credenciais válidas", () => {
+  assert.equal(
+    commercialState(
+      base,
+      { enabled: true },
+      { MP_ACCESS_TOKEN: "local", MP_COLLECTOR_ID: "42" },
+    ).config.commercialEnabled,
+    true,
+  );
+  assert.equal(
+    commercialState(
+      base,
+      { enabled: false },
+      { MP_ACCESS_TOKEN: "local", MP_COLLECTOR_ID: "42" },
+    ).config.commercialEnabled,
+    false,
+  );
 });

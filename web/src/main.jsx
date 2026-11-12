@@ -1,19 +1,25 @@
+import AdvertiserContact, { AuthorizeContact } from "./AdvertiserContact.jsx";
+import ListingWizard from "./ListingWizard.jsx";
+import {
+  categories,
+  typeNames,
+  states,
+  listingFeatures,
+} from "./classified-catalog.js";
 import Brand, { brandName, brandSlogan } from "./Brand.jsx";
 import ForgotPassword from "./ForgotPassword.jsx";
 import Customers from "./Customers.jsx";
 import { dashboardFor } from "./partner-access.js";
 import Tabs from "./Tabs.jsx";
 import Profile, { IdentityFields } from "./Profile.jsx";
-import { CouponField, PartnerDashboard, AdminPartners } from "./Partners.jsx";
-import React, { useState, useEffect, useRef } from "react";
+import { PartnerDashboard, AdminPartners } from "./Partners.jsx";
+import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowUpRight,
   ArrowRight,
   MapPin,
   House,
-  Trees,
-  LandPlot,
   Search,
   Menu,
   X,
@@ -21,30 +27,26 @@ import {
   MessageCircle,
   Plus,
   LogOut,
-  Building2,
 } from "lucide-react";
 import "./style.css";
 import { paymentReturnMessage } from "./payment-result.js";
-import { MediaImage, PhotoPicker } from "./media.jsx";
-import { uploadSelectedPhotos } from "./photo-uploads.js";
+import { MediaImage } from "./media.jsx";
 import CommercialSettings from "./CommercialSettings.jsx";
 import PaymentFields, { readPaymentDetails } from "./PaymentFields.jsx";
 import TestCheckout from "./TestCheckout.jsx";
-import { createListingCheckout } from "./listing-checkout.js";
-import { emptyFilters, findListings, areaLabel } from "./catalog.js";
+import { emptyFilters, findListings } from "./catalog.js";
 const API = (
   import.meta.env.VITE_API_URL || "http://localhost:3002/api"
 ).replace(/\/$/, "");
 const money = (n) =>
   (n / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const typeNames = { HOUSE: "Casa", LOT: "Lote", FARM: "Fazenda" },
-  statusNames = {
-    PENDING: "Aguardando pagamento e análise",
-    PUBLISHED: "Publicado",
-    REJECTED: "Reprovado — fale com o corretor",
-    CLOSED: "Negociação concluída",
-    CANCELLED: "Cancelado",
-  };
+const statusNames = {
+  PENDING: "Aguardando pagamento e análise",
+  PUBLISHED: "Publicado",
+  REJECTED: "Reprovado — fale com o suporte",
+  CLOSED: "Negociação concluída",
+  CANCELLED: "Cancelado",
+};
 const initialConfig = {
   brokerName: "Lourival Missias Pereira",
   brokerPhone: "5563999915770",
@@ -216,7 +218,7 @@ function App() {
             className={view === "home" ? "active" : ""}
             onClick={() => go("home")}
           >
-            Encontrar imóvel
+            Encontrar anúncios
           </button>
           <button
             onClick={() => {
@@ -233,7 +235,7 @@ function App() {
             Como funciona
           </button>
           <a href={wa} target="_blank" rel="noreferrer">
-            Fale com Lourival <ArrowUpRight size={14} />
+            Fale com o suporte <ArrowUpRight size={14} />
           </a>
         </nav>
         <div className="header-actions">
@@ -247,7 +249,7 @@ function App() {
           )}
           {user?.role !== "PARTNER" && (
             <button className="primary small" onClick={announce}>
-              Anunciar imóvel <Plus size={16} />
+              Anunciar <Plus size={16} />
             </button>
           )}
           <button
@@ -318,10 +320,10 @@ function App() {
             <div>
               <div className="kicker">IMÓVEIS e ITENS EM GERAL</div>
               <p className="catalog-brand-slogan">{brandSlogan}</p>
-              <h1>Qual imóvel você procura?</h1>
+              <h1>O que você está procurando?</h1>
               <p>
-                Compare casas, lotes e fazendas. Escolha seu imóvel e agende uma
-                visita com Lourival.
+                Encontre imóveis, veículos, eletrônicos e muito mais. Negocie
+                diretamente com quem anuncia.
               </p>
             </div>
             <a
@@ -334,14 +336,14 @@ function App() {
               <span>
                 Precisa de ajuda?
                 <strong>
-                  Fale com Lourival <ArrowUpRight size={14} />
+                  Fale com o suporte <ArrowUpRight size={14} />
                 </strong>
               </span>
             </a>
           </section>
           <section
             className="catalog-search container"
-            aria-label="Encontrar imóvel"
+            aria-label="Encontrar anúncios"
           >
             <div
               className="purpose-options"
@@ -374,6 +376,35 @@ function App() {
                   .scrollIntoView({ behavior: "smooth" });
               }}
             >
+              <Field label="O que você procura?">
+                <input
+                  aria-label="Buscar anúncios"
+                  placeholder="Ex.: carro, celular, casa"
+                  value={filters.search}
+                  onChange={(e) =>
+                    setFilters({ ...filters, search: e.target.value })
+                  }
+                />
+              </Field>
+              <Field label="Categoria">
+                <select
+                  value={filters.category}
+                  onChange={(e) =>
+                    setFilters({
+                      ...filters,
+                      category: e.target.value,
+                      type: "",
+                    })
+                  }
+                >
+                  <option value="">Todas as categorias</option>
+                  {Object.entries(categories).map(([id, c]) => (
+                    <option key={id} value={id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               <Field label="Cidade">
                 <div className="input-icon">
                   <MapPin size={18} />
@@ -387,7 +418,7 @@ function App() {
                   />
                 </div>
               </Field>
-              <Field label="Tipo de imóvel">
+              <Field label="Tipo de anúncio">
                 <select
                   value={filters.type}
                   onChange={(e) =>
@@ -395,9 +426,28 @@ function App() {
                   }
                 >
                   <option value="">Todos os tipos</option>
-                  <option value="HOUSE">Casa</option>
-                  <option value="LOT">Lote</option>
-                  <option value="FARM">Fazenda</option>
+                  {Object.entries(
+                    filters.category
+                      ? categories[filters.category].types
+                      : typeNames,
+                  ).map(([id, label]) => (
+                    <option key={id} value={id}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Estado">
+                <select
+                  value={filters.state}
+                  onChange={(e) =>
+                    setFilters({ ...filters, state: e.target.value })
+                  }
+                >
+                  <option value="">Todos os estados</option>
+                  {states.map((state) => (
+                    <option key={state}>{state}</option>
+                  ))}
                 </select>
               </Field>
               <Field
@@ -416,7 +466,7 @@ function App() {
                   <option value="">Qualquer valor</option>
                   {(filters.purpose === "RENT"
                     ? [1000, 2000, 3000, 5000, 10000]
-                    : [150000, 300000, 600000, 1000000, 3000000]
+                    : [100, 500, 1000, 5000, 50000, 300000, 1000000]
                   ).map((n) => (
                     <option value={n} key={n}>
                       {money(n * 100)}
@@ -425,7 +475,7 @@ function App() {
                 </select>
               </Field>
               <button className="primary" type="submit">
-                <Search size={18} /> Ver imóveis
+                <Search size={18} /> Ver anúncios
               </button>
             </form>
           </section>
@@ -434,21 +484,20 @@ function App() {
               <div
                 className="category-row catalog-categories"
                 role="group"
-                aria-label="Escolher tipo de imóvel"
+                aria-label="Escolher categoria"
               >
                 {[
-                  ["", "Todos", Building2],
-                  ["HOUSE", "Casas", House],
-                  ["LOT", "Lotes", LandPlot],
-                  ["FARM", "Fazendas", Trees],
-                ].map(([value, label, Icon]) => (
+                  ["", "Todos"],
+                  ...Object.entries(categories).map(([id, c]) => [id, c.name]),
+                ].map(([value, label]) => (
                   <button
                     key={value}
-                    aria-pressed={filters.type === value}
-                    className={filters.type === value ? "selected" : ""}
-                    onClick={() => setFilters({ ...filters, type: value })}
+                    aria-pressed={filters.category === value}
+                    className={filters.category === value ? "selected" : ""}
+                    onClick={() =>
+                      setFilters({ ...filters, category: value, type: "" })
+                    }
                   >
-                    <Icon size={20} />
                     {label}
                   </button>
                 ))}
@@ -457,10 +506,10 @@ function App() {
                 <div>
                   <h2>
                     {filters.type
-                      ? { HOUSE: "Casas", LOT: "Lotes", FARM: "Fazendas" }[
-                          filters.type
-                        ]
-                      : "Imóveis"}{" "}
+                      ? typeNames[filters.type]
+                      : filters.category
+                        ? categories[filters.category].name
+                        : "Anúncios"}{" "}
                     {filters.purpose === "RENT"
                       ? "para alugar"
                       : filters.purpose === "SALE"
@@ -469,8 +518,8 @@ function App() {
                   </h2>
                   <p role="status" aria-live="polite">
                     {loading
-                      ? "Buscando imóveis disponíveis…"
-                      : `${visible.length} ${visible.length === 1 ? "imóvel encontrado" : "imóveis encontrados"}${offline ? " · exemplos ilustrativos" : ""}`}
+                      ? "Buscando anúncios disponíveis…"
+                      : `${visible.length} ${visible.length === 1 ? "anúncio encontrado" : "anúncios encontrados"}${offline ? " · exemplos ilustrativos" : ""}`}
                     {filters.city && ` em ${filters.city}`}
                   </p>
                 </div>
@@ -498,7 +547,7 @@ function App() {
               </div>
               {offline && (
                 <div className="notice">
-                  Prévia visual: os imóveis abaixo são exemplos e não estão à
+                  Prévia visual: os anúncios abaixo são exemplos e não estão à
                   venda. Conecte a API para exibir anúncios reais.
                 </div>
               )}
@@ -532,7 +581,7 @@ function App() {
                     <div className="card-content">
                       <div className="card-location">
                         <MapPin size={13} />
-                        {l.neighborhood} · {l.city}, TO
+                        {l.neighborhood} · {l.city}/{l.state || "TO"}
                       </div>
                       <h3>
                         <button
@@ -545,16 +594,7 @@ function App() {
                         </button>
                       </h3>
                       <div className="card-features">
-                        <span>
-                          <LandPlot size={15} />
-                          {areaLabel(l)}
-                        </span>
-                        {l.bedrooms > 0 && (
-                          <span>
-                            <House size={15} />
-                            {l.bedrooms} quartos
-                          </span>
-                        )}
+                        <span>{listingFeatures(l).join(" · ")}</span>
                       </div>
                       <div className="card-bottom">
                         <strong>
@@ -568,7 +608,7 @@ function App() {
                             setModal("property");
                           }}
                         >
-                          Ver imóvel <ArrowUpRight size={16} />
+                          Ver anúncio <ArrowUpRight size={16} />
                         </button>
                       </div>
                     </div>
@@ -585,20 +625,20 @@ function App() {
                   <House size={35} />
                   <h3>
                     {hasFilters
-                      ? "Não encontramos imóveis com esses filtros."
-                      : "Novos imóveis em breve."}
+                      ? "Não encontramos anúncios com esses filtros."
+                      : "Novos anúncios em breve."}
                   </h3>
                   <p>
                     {hasFilters
-                      ? "Experimente outra cidade, tipo de imóvel ou faixa de preço."
-                      : "Fale com Lourival para consultar oportunidades na região."}
+                      ? "Experimente outra cidade, categoria ou faixa de preço."
+                      : "Fale com o suporte para consultar oportunidades na região."}
                   </p>
                   {hasFilters && (
                     <button
                       className="outline"
                       onClick={() => setFilters(emptyFilters)}
                     >
-                      Ver todos os imóveis
+                      Ver todos os anúncios
                     </button>
                   )}
                   <a
@@ -607,7 +647,7 @@ function App() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Falar com Lourival <ArrowUpRight size={18} />
+                    Falar com o suporte <ArrowUpRight size={18} />
                   </a>
                 </div>
               )}
@@ -616,17 +656,15 @@ function App() {
               <div>
                 <span className="eyebrow">PARA QUEM QUER ANUNCIAR</span>
                 <h2>
-                  Seu imóvel merece
+                  Seu anúncio merece
                   <br />
                   ser <em>encontrado.</em>
                 </h2>
                 <p>
-                  Você anuncia. Lourival cuida dos contatos,
-                  <br />
-                  das visitas e da negociação.
+                  Você anuncia e recebe os contatos diretamente no seu WhatsApp.
                 </p>
                 <button className="cream" onClick={announce}>
-                  Quero anunciar meu imóvel <ArrowUpRight size={19} />
+                  Quero criar meu anúncio <ArrowUpRight size={19} />
                 </button>
               </div>
               <div className="plan-card">
@@ -643,38 +681,38 @@ function App() {
                   </li>
                   <li>
                     <Check size={17} />
-                    Atendimento centralizado com Lourival
+                    Contato direto com o anunciante
                   </li>
                   <li>
                     <Check size={17} />
-                    Acompanhamento das oportunidades
+                    Categorias para encontrar o que procura
                   </li>
                 </ul>
                 <div className="plan-note">
-                  Comissão de intermediação cobrada separadamente, conforme
-                  contrato.
+                  Você paga somente pela divulgação. Sem comissão sobre a
+                  negociação.
                 </div>
               </div>
             </section>
             <section id="como-funciona" className="how">
               <div className="kicker">SIMPLES, DO INÍCIO AO FIM</div>
-              <h2>O próximo passo é mais fácil com alguém ao lado.</h2>
+              <h2>Anuncie, apareça e negocie.</h2>
               <div className="steps">
                 {[
                   [
                     "01",
-                    "Cadastre seu imóvel",
-                    "Escolha seu plano, informe os detalhes e aceite as condições de divulgação e intermediação.",
+                    "Cadastre seu anúncio",
+                    "Escolha a categoria, informe os detalhes e envie suas fotos.",
                   ],
                   [
                     "02",
                     "Dê visibilidade ao seu anúncio",
-                    "Após o pagamento confirmado e a análise, seu imóvel fica disponível pelo período contratado.",
+                    "Escolha o plano e pague. Após a confirmação e a análise, seu anúncio fica disponível pelo período contratado.",
                   ],
                   [
                     "03",
-                    "Negocie com acompanhamento",
-                    "Lourival atende os interessados, organiza visitas e acompanha a negociação com você.",
+                    "Converse diretamente",
+                    "Os interessados entram em contato no seu WhatsApp. Combine a negociação diretamente, sem comissão do portal.",
                   ],
                 ].map(([n, t, d]) => (
                   <div key={n}>
@@ -713,8 +751,8 @@ function App() {
           <Brand />
         </a>
         <div>
-          <strong>{config.brokerName}</strong>
-          <p>CRECI informado: {config.brokerCreci} · Tocantins</p>
+          <strong>Atendimento Negocieê</strong>
+          <p>Suporte ao portal e aos anúncios</p>
           <a href={wa} target="_blank" rel="noreferrer">
             (63) 99991-5770 <ArrowUpRight size={14} />
           </a>
@@ -737,7 +775,7 @@ function App() {
               modal === "auth"
                 ? "Acesso ao Negocieê"
                 : modal === "property"
-                  ? "Detalhes do imóvel"
+                  ? "Detalhes do anúncio"
                   : "Privacidade e condições"
             }
             className="modal"
@@ -767,26 +805,24 @@ function App() {
                 <div className="kicker">TRANSPARÊNCIA</div>
                 <h2>Privacidade e condições</h2>
                 <p>
-                  Nome, CPF, celular e endereço do cadastro são utilizados para
-                  administrar sua conta, a contratação e o atendimento. Os dados
-                  do imóvel são utilizados na divulgação. Nome e telefone de
-                  interessados são utilizados por Lourival para atender à
-                  solicitação de contato e registrar visitas e propostas. Dados
-                  do proprietário e endereço completo não aparecem na consulta
-                  pública da API.
+                  Nome, CPF, endereço e e-mail do cadastro são utilizados para
+                  administrar sua conta e a contratação. O WhatsApp informado e
+                  autorizado no anúncio será disponibilizado para contato direto
+                  com interessados. Cidade, bairro, fotos e detalhes do produto
+                  são públicos; o endereço completo e o CPF não são publicados.
                 </p>
                 <p>
-                  O preço do anúncio remunera a divulgação pelo prazo contratado
-                  e não garante venda ou aluguel. A comissão de intermediação é
-                  separada e será definida e formalizada em contrato. Não há
-                  renovação automática neste sistema.
+                  O preço do anúncio remunera somente a divulgação pelo prazo
+                  contratado, sem garantia de venda ou aluguel. Nos novos
+                  anúncios não há comissão de intermediação. A negociação ocorre
+                  diretamente entre anunciante e interessado. Não há renovação
+                  automática.
                 </p>
                 <p>
                   Para acesso, correção, exclusão de dados, cancelamento ou
-                  reembolso, fale com Lourival pelo WhatsApp. Prazos de
-                  retenção, identificação do controlador e condições finais de
-                  contratação devem ser revisados e publicados antes de ativar a
-                  operação comercial.
+                  reembolso, fale com o suporte do Negocieê. Condições e
+                  registros de contratações anteriores são preservados no
+                  histórico.
                 </p>
               </>
             )}
@@ -820,11 +856,13 @@ function Auth({ onSuccess }) {
     <>
       <div className="kicker">ACESSO AO PORTAL</div>
       <h2>
-        {register ? "Seu imóvel, novos caminhos." : "Que bom ter você aqui."}
+        {register
+          ? "Seu anúncio, novas oportunidades."
+          : "Que bom ter você aqui."}
       </h2>
       <p>
         {register
-          ? "Crie sua conta para anunciar e acompanhar seu imóvel."
+          ? "Crie sua conta para anunciar e acompanhar seus produtos."
           : "Entre para acessar seu painel e acompanhar suas atividades."}
       </p>
       {notice && (
@@ -914,10 +952,7 @@ function Auth({ onSuccess }) {
     </>
   );
 }
-function Property({ listing: l, demo, config }) {
-  const [error, setError] = useState(""),
-    [busy, setBusy] = useState(false),
-    [url, setUrl] = useState("");
+function Property({ listing: l, demo }) {
   return (
     <>
       <Photo className="detail-cover" src={l.images[0]} alt={l.title} />
@@ -926,116 +961,39 @@ function Property({ listing: l, demo, config }) {
       </div>
       <h2>{l.title}</h2>
       <p>
-        <MapPin size={15} /> {l.neighborhood} · {l.city}, TO
+        <MapPin size={15} /> {l.neighborhood} · {l.city}/{l.state || "TO"}
       </p>
       <h3>
         {money(l.price)} {l.purpose === "RENT" ? "/mês" : ""}
       </h3>
-      <p>
-        {l.area.toLocaleString("pt-BR")} m²{" "}
-        {l.bedrooms > 0 ? `· ${l.bedrooms} quartos` : ""}
-      </p>
+      <p>{listingFeatures(l).join(" · ")}</p>
       <p className="description">
-        {l.description ||
-          "Imóvel ilustrativo para apresentar o portal. Não se trata de oferta real."}
+        {l.description || "Anúncio ilustrativo. Não se trata de oferta real."}
       </p>
       {l.images.length > 1 && (
         <div className="gallery">
           {l.images.slice(1).map((src) => (
-            <Photo key={src} src={src} alt="Outro ângulo do imóvel" />
+            <Photo key={src} src={src} alt="Outra foto do anúncio" />
           ))}
         </div>
       )}
       {demo ? (
         <div className="notice">
-          Este é um exemplo visual. O agendamento será habilitado nos anúncios
-          reais.
+          Este é um exemplo visual. O contato está disponível somente nos
+          anúncios reais.
         </div>
       ) : (
-        <>
-          <h3>Vamos conhecer esse imóvel?</h3>
-          <p>O contato e as visitas são organizados por {config.brokerName}.</p>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setError("");
-              setBusy(true);
-              try {
-                const f = Object.fromEntries(new FormData(e.currentTarget));
-                const d = await api(`/listings/${l.id}/leads`, {
-                  method: "POST",
-                  body: {
-                    ...f,
-                    phone: f.phone.replace(/\D/g, ""),
-                    consent: f.consent === "on",
-                  },
-                });
-                setUrl(d.whatsapp);
-              } catch (err) {
-                setError(err.message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <Field label="Seu nome" name="name" required minLength={3} />
-            <Field label="WhatsApp com DDD" name="phone" type="tel" required />
-            <Field label="Mensagem" name="message" maxLength={1000} />
-            <label className="checkbox">
-              <input name="consent" type="checkbox" required />
-              Autorizo o uso dos meus dados para este atendimento e contato pelo
-              corretor.
-            </label>
-            {error && <p className="notice error">{error}</p>}
-            <button disabled={busy} className="primary wide">
-              {busy ? "Registrando…" : "Registrar interesse"}
-              <MessageCircle size={17} />
-            </button>
-          </form>
-          {url && (
-            <a
-              className="cream wide"
-              target="_blank"
-              rel="noreferrer"
-              href={url}
-            >
-              Continuar no WhatsApp de Lourival <ArrowUpRight size={17} />
-            </a>
-          )}
-        </>
+        <AdvertiserContact key={l.id} listing={l} request={api} />
       )}
     </>
   );
 }
 function Owner({ config, setError }) {
   const [items, setItems] = useState([]),
-    [photos, setPhotos] = useState([]),
     [paymentListing, setPaymentListing] = useState(null),
     [show, setShow] = useState(false),
     [busy, setBusy] = useState(false),
-    [feedback, setFeedback] = useState(""),
-    [purpose, setPurpose] = useState("SALE"),
-    [plan, setPlan] = useState("BASIC"),
-    [couponQuote, setCouponQuote] = useState(null),
-    [couponPending, setCouponPending] = useState(false);
-  useEffect(() => {
-    if (!show) {
-      setCouponQuote(null);
-      setCouponPending(false);
-    }
-  }, [show]);
-  const promotion = couponQuote?.plan === plan ? couponQuote : null;
-  const finalAdPrice =
-    promotion?.finalPrice ??
-    (plan === "BASIC" ? config.adPrice : config.featuredPrice);
-  const photoRef = useRef(photos);
-  photoRef.current = photos;
-  useEffect(
-    () => () => {
-      for (const photo of photoRef.current) URL.revokeObjectURL(photo.preview);
-    },
-    [],
-  );
+    [feedback, setFeedback] = useState("");
   const load = () =>
     api("/owner/listings")
       .then(setItems)
@@ -1061,7 +1019,7 @@ function Owner({ config, setError }) {
         await load();
         if (d.reversed)
           setError(
-            "O pagamento deste anúncio foi estornado. Fale com o corretor.",
+            "O pagamento deste anúncio foi estornado. Fale com o suporte.",
           );
         else if (!d.paid)
           setError(
@@ -1078,8 +1036,8 @@ function Owner({ config, setError }) {
     <main className="container dashboard">
       <div className="section-heading">
         <div>
-          <div className="kicker">ÁREA DO PROPRIETÁRIO</div>
-          <h1>Seus imóveis, novos negócios.</h1>
+          <div className="kicker">ÁREA DO ANUNCIANTE</div>
+          <h1>Seus anúncios, novos negócios.</h1>
           <p>Acompanhe a divulgação e o pagamento dos seus anúncios.</p>
         </div>
         <button className="primary" onClick={() => setShow(!show)}>
@@ -1098,271 +1056,19 @@ function Owner({ config, setError }) {
         </div>
       )}
       {show && (
-        <form
-          className="form-panel"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setBusy(true);
-            setFeedback("");
-            if (couponPending) {
-              setFeedback("Aplique o cupom ou remova-o antes de continuar.");
-              setBusy(false);
-              return;
-            }
-            if (!config.commercialEnabled) {
-              setFeedback(
-                "A contratação está temporariamente indisponível. Fale com Lourival para anunciar.",
-              );
-              setBusy(false);
-              return;
-            }
-            try {
-              const formData = new FormData(e.currentTarget);
-              const {
-                billingFirstName,
-                billingLastName,
-                billingCpf,
-                billingPhone,
-                ...f
-              } = Object.fromEntries(formData);
-              const payer = readPaymentDetails(formData);
-              const images = await uploadSelectedPhotos(
-                photos,
-                api,
-                (key, uploaded) =>
-                  setPhotos((previous) =>
-                    previous.map((photo) =>
-                      photo.key === key ? { ...photo, ...uploaded } : photo,
-                    ),
-                  ),
-              );
-              const result = await createListingCheckout(
-                api,
-                {
-                  ...f,
-                  purpose,
-                  plan,
-                  price: Math.round(Number(f.price) * 100),
-                  area: Number(f.area),
-                  bedrooms: Number(f.bedrooms),
-                  ownerPhone: f.ownerPhone.replace(/\D/g, ""),
-                  images,
-                  termsAccepted: f.termsAccepted === "on",
-                  termsVersion: config.termsVersion,
-                  ...(promotion
-                    ? {
-                        couponCode: promotion.code,
-                        couponVersion: promotion.version,
-                      }
-                    : {}),
-                },
-                (listing) => {
-                  setItems((previous) => [listing, ...previous]);
-                  setShow(false);
-                  photos.forEach((photo) => URL.revokeObjectURL(photo.preview));
-                  setPhotos([]);
-                },
-                payer,
-              );
-              if (result.url) window.location.assign(result.url);
-              else setFeedback(result.error);
-            } catch (err) {
-              setFeedback(err.message);
-            } finally {
-              setBusy(false);
-            }
+        <ListingWizard
+          config={config}
+          request={api}
+          onCancel={() => setShow(false)}
+          onCreated={(listing) => {
+            setItems((previous) => [listing, ...previous]);
+            setShow(false);
           }}
-        >
-          <h2>Conte a história do seu imóvel.</h2>
-          <div className="form-grid">
-            <Field
-              label="Título"
-              name="title"
-              minLength={8}
-              maxLength={100}
-              required
-            />
-            <Field label="Tipo">
-              <select name="type">
-                <option value="HOUSE">Casa</option>
-                <option value="LOT">Lote</option>
-                <option value="FARM">Fazenda</option>
-              </select>
-            </Field>
-            <Field label="Finalidade">
-              <select
-                value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
-              >
-                <option value="SALE">Venda</option>
-                <option value="RENT">Aluguel</option>
-              </select>
-            </Field>
-            <Field
-              label="Valor em reais (no aluguel, valor mensal)"
-              name="price"
-              type="number"
-              min="0.01"
-              max="20000000"
-              step="0.01"
-              required
-            />
-            <Field label="Cidade — Tocantins" name="city" required />
-            <Field
-              label="Bairro ou região pública"
-              name="neighborhood"
-              required
-            />
-            <Field
-              label="Endereço completo (privado)"
-              name="privateAddress"
-              required
-              minLength={8}
-            />
-            <Field
-              label="Seu telefone (privado)"
-              name="ownerPhone"
-              type="tel"
-              required
-            />
-            <Field
-              label="Área em m²"
-              name="area"
-              type="number"
-              min="0.01"
-              step="0.01"
-              required
-            />
-            <Field
-              label="Quartos"
-              name="bedrooms"
-              type="number"
-              min="0"
-              max="100"
-              defaultValue="0"
-              required
-            />
-          </div>
-          <Field label="Descrição pública — não inclua telefone, e-mail ou endereço completo">
-            <textarea
-              name="description"
-              required
-              minLength={30}
-              maxLength={5000}
-              rows={4}
-            />
-          </Field>
-          <PhotoPicker
-            photos={photos}
-            setPhotos={setPhotos}
-            disabled={busy}
-            request={api}
-          />
-          <div className="plan-options">
-            {[
-              ["BASIC", "Divulgação", config.adPrice],
-              ["FEATURED", "Destaque", config.featuredPrice],
-            ].map(([v, t, p]) => (
-              <label className={plan === v ? "chosen" : ""} key={v}>
-                <input
-                  type="radio"
-                  name="plan"
-                  checked={plan === v}
-                  onChange={() => {
-                    setPlan(v);
-                    setCouponQuote(null);
-                    setCouponPending(false);
-                  }}
-                />
-                <strong>
-                  {t} · {money(p)}
-                </strong>
-                <span>
-                  {config.durationDays} dias
-                  {v === "FEATURED" ? " · prioridade na listagem" : ""}
-                </span>
-              </label>
-            ))}
-          </div>
-          <CouponField
-            key={plan}
-            request={api}
-            plan={plan}
-            onChange={setCouponQuote}
-            onPendingChange={setCouponPending}
-          />
-          <PaymentFields />
-          <h3>Condições comerciais</h3>
-          <p>
-            Anúncio: {money(finalAdPrice)}
-            {promotion && ` com o cupom ${promotion.code}`}. Comissão:{" "}
-            {(
-              (purpose === "SALE"
-                ? config.saleCommissionBps
-                : config.rentCommissionBps) / 100
-            ).toLocaleString("pt-BR")}
-            %{" "}
-            {purpose === "SALE"
-              ? "do preço final de venda"
-              : "de um aluguel mensal"}
-            , cobrada separadamente do proprietário conforme contrato de
-            intermediação.
-          </p>
-          <div className="terms-text">
-            {config.terms?.[purpose]?.replace(
-              (config.adPrice / 100).toFixed(2),
-              (finalAdPrice / 100).toFixed(2),
-            ) || "Condições ainda não configuradas."}
-          </div>
-          <label className="checkbox">
-            <input
-              key={`${plan}-${purpose}-${promotion?.code || ""}-${promotion?.version || ""}-${finalAdPrice}`}
-              name="termsAccepted"
-              type="checkbox"
-              required
-            />
-            Li e aceito as condições e autorizo a intermediação e o uso das
-            imagens.
-          </label>
-          {!config.commercialEnabled && (
-            <div className="notice" id="checkout-unavailable" role="status">
-              O pagamento de anúncios ainda não foi habilitado. O cadastro
-              ficará disponível após a configuração comercial.{" "}
-              <a
-                className="text-button"
-                href={`https://wa.me/${config.brokerPhone}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Falar com Lourival <ArrowUpRight size={14} />
-              </a>
-            </div>
-          )}
-          {couponPending && (
-            <p className="notice" role="status">
-              Aplique o cupom ou remova-o para continuar com o cadastro.
-            </p>
-          )}
-          {feedback && (
-            <div className="notice error" role="alert">
-              {feedback}
-            </div>
-          )}
-          <button
-            className="primary"
-            aria-describedby={
-              !config.commercialEnabled ? "checkout-unavailable" : undefined
-            }
-            disabled={busy || couponPending || !config.commercialEnabled}
-          >
-            {busy
-              ? "Preparando pagamento…"
-              : !config.commercialEnabled
-                ? "Contratação temporariamente indisponível"
-                : "Cadastrar e seguir para pagamento"}
-            <ArrowRight size={17} />
-          </button>
-        </form>
+          onResult={(result) => {
+            if (result.url) window.location.assign(result.url);
+            else setFeedback(result.error);
+          }}
+        />
       )}
       <div className="owner-list">
         {items.map((l) => (
@@ -1370,6 +1076,40 @@ function Owner({ config, setError }) {
             <Photo src={l.images[0]} alt="" />
             <div>
               <h3>{l.title}</h3>
+              {!["CLOSED", "CANCELLED"].includes(l.status) && (
+                <details>
+                  <summary>Contato do anúncio</summary>
+                  <AuthorizeContact listing={l} request={api} onSaved={load} />
+                </details>
+              )}
+              {l.status === "PUBLISHED" && (
+                <button
+                  className="text-button"
+                  disabled={busy}
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        "Encerrar a divulgação deste anúncio? Ele deixará de aparecer na busca.",
+                      )
+                    )
+                      return;
+                    setBusy(true);
+                    try {
+                      await api(`/owner/listings/${l.id}/close`, {
+                        method: "POST",
+                      });
+                      await load();
+                    } catch (e) {
+                      setFeedback(e.message);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Já negociei / encerrar anúncio
+                </button>
+              )}
+
               <p>
                 {statusNames[l.status]}
                 {l.expiresAt
@@ -1383,35 +1123,38 @@ function Owner({ config, setError }) {
                   : l.paidAt
                     ? "Pagamento confirmado"
                     : "Pagamento pendente"}{" "}
-                · Comissão contratada: {l.commissionBps / 100}%
+                {!l.termsVersion.startsWith("2026-11-classifieds") &&
+                  `· Comissão histórica: ${l.commissionBps / 100}%`}
                 {l.couponCode && ` · cupom ${l.couponCode}`}
               </p>
             </div>
-            {!l.paidAt && !l.affiliateVoidedAt && (
-              <div className="action-stack">
-                <button
-                  className="primary small"
-                  disabled={busy || !config.commercialEnabled}
-                  onClick={() => action(l, true)}
-                >
-                  Pagar anúncio
-                </button>
-                <button
-                  className="outline small"
-                  disabled={busy}
-                  onClick={() => action(l, false)}
-                >
-                  Já paguei: verificar
-                </button>
-              </div>
-            )}
+            {!l.paidAt &&
+              !l.affiliateVoidedAt &&
+              !["CLOSED", "CANCELLED"].includes(l.status) && (
+                <div className="action-stack">
+                  <button
+                    className="primary small"
+                    disabled={busy || !config.commercialEnabled}
+                    onClick={() => action(l, true)}
+                  >
+                    Pagar anúncio
+                  </button>
+                  <button
+                    className="outline small"
+                    disabled={busy}
+                    onClick={() => action(l, false)}
+                  >
+                    Já paguei: verificar
+                  </button>
+                </div>
+              )}
           </article>
         ))}
         {!items.length && !show && (
           <div className="empty">
             <House size={34} />
             <h3>Seu primeiro anúncio começa aqui.</h3>
-            <p>Cadastre um imóvel para iniciar.</p>
+            <p>Cadastre um produto ou imóvel para iniciar.</p>
           </div>
         )}
       </div>
@@ -1506,7 +1249,7 @@ function Admin({ config, setError, onConfigChange, userName }) {
     commissions = items.reduce((a, l) => a + (l.deal?.commission || 0), 0);
   return (
     <main className="container dashboard">
-      <div className="kicker">PAINEL DO CORRETOR</div>
+      <div className="kicker">PAINEL DO ADMINISTRADOR</div>
       <h1>Olá, {userName?.trim().split(/\s+/)[0] || "Lourival"}.</h1>
       <p>Da primeira conversa ao próximo negócio.</p>
       <div className="metrics">
@@ -1519,7 +1262,7 @@ function Admin({ config, setError, onConfigChange, userName }) {
           <strong>{leads.length}</strong>
         </div>
         <div>
-          <span>Comissões negociadas</span>
+          <span>Comissões históricas</span>
           <strong>{money(commissions)}</strong>
         </div>
       </div>
@@ -1531,7 +1274,7 @@ function Admin({ config, setError, onConfigChange, userName }) {
         tabs={[
           ["listings", "Anúncios"],
           ["customers", "Clientes cadastrados"],
-          ["leads", "Contatos e visitas"],
+          ["leads", "Contatos antigos"],
           ["audit", "Histórico"],
           ["settings", "Configurações"],
           ["partners", "Parceiros e cupons"],
@@ -1625,14 +1368,15 @@ function Admin({ config, setError, onConfigChange, userName }) {
                       </button>
                     </>
                   )}
-                  {l.status === "PUBLISHED" && (
-                    <button
-                      className="primary small"
-                      onClick={() => setDeal(l)}
-                    >
-                      Registrar fechamento
-                    </button>
-                  )}
+                  {l.status === "PUBLISHED" &&
+                    !l.termsVersion.startsWith("2026-11-classifieds") && (
+                      <button
+                        className="primary small"
+                        onClick={() => setDeal(l)}
+                      >
+                        Registrar fechamento
+                      </button>
+                    )}
                 </div>
               </div>
               <details>
@@ -1651,8 +1395,9 @@ function Admin({ config, setError, onConfigChange, userName }) {
                 </p>
                 <p>{l.termsText}</p>
                 <p>
-                  Confira e remova contatos ou dados privados da publicação:
-                  reprove o cadastro e peça novo envio quando necessário.
+                  Confira as informações e remova dados privados da descrição e
+                  das fotos: reprove o cadastro e peça novo envio quando
+                  necessário.
                 </p>
               </details>
               {l.deal && (

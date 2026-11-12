@@ -1,3 +1,9 @@
+import {
+  listingSchema,
+  catalogFilter,
+  whatsappFor,
+  contactPhone,
+} from "./listing-schema.js";
 import { registerPasswordResetRoutes } from "./password-reset.js";
 import { registerCustomerRoutes } from "./customers.js";
 import { requireAdvertiser } from "./access.js";
@@ -110,7 +116,9 @@ const auth = wrap(async (q, r, n) => {
   n();
 });
 const admin = (q, r, n) =>
-  q.user.role === "ADMIN" ? n() : n(fail(403, "Acesso restrito ao corretor."));
+  q.user.role === "ADMIN"
+    ? n()
+    : n(fail(403, "Acesso restrito ao administrador."));
 const publicWhere = () => ({
   status: "PUBLISHED",
   reviewed: true,
@@ -208,18 +216,20 @@ registerProfileRoutes(app, { db, auth, wrap, audit });
 app.get(
   "/api/listings",
   wrap(async (q, r) => {
-    const filter = z
-      .object({
-        type: z.enum(["HOUSE", "LOT", "FARM"]).optional(),
-        purpose: z.enum(["SALE", "RENT"]).optional(),
-        city: z.string().max(100).optional(),
-      })
-      .parse(q.query);
+    const { search, ...filter } = catalogFilter.parse(q.query);
     r.json(
       await db.listing.findMany({
         where: {
           ...publicWhere(),
           ...filter,
+          ...(search
+            ? {
+                OR: [
+                  { title: { contains: search, mode: "insensitive" } },
+                  { description: { contains: search, mode: "insensitive" } },
+                ],
+              }
+            : {}),
           city: filter.city
             ? { contains: filter.city, mode: "insensitive" }
             : undefined,
@@ -238,40 +248,11 @@ app.get(
       where: { id: q.params.id, ...publicWhere() },
       select: publicFields,
     });
-    if (!l) throw fail(404, "Imóvel indisponível.");
+    if (!l) throw fail(404, "Anúncio indisponível.");
     r.json(l);
   }),
 );
 const phone = z.string().regex(/^\d{10,13}$/, "Informe o telefone com DDD.");
-const listingSchema = z.object({
-  couponCode: z.string().trim().max(32).optional(),
-  couponVersion: z.string().datetime().optional(),
-  title: z.string().trim().min(8).max(100),
-  description: z.string().trim().min(30).max(5000),
-  type: z.enum(["HOUSE", "LOT", "FARM"]),
-  purpose: z.enum(["SALE", "RENT"]),
-  plan: z.enum(["BASIC", "FEATURED"]),
-  city: z.string().trim().min(2).max(100),
-  neighborhood: z.string().trim().min(2).max(100),
-  privateAddress: z.string().trim().min(8).max(250),
-  ownerPhone: phone,
-  price: z.number().int().positive().max(2000000000),
-  area: z.number().positive().max(1e10),
-  bedrooms: z.number().int().min(0).max(100),
-  images: z
-    .array(
-      z
-        .string()
-        .refine(
-          (v) => Boolean(uploadId(v)),
-          "Envie as fotos pelo seletor de arquivos.",
-        ),
-    )
-    .min(1)
-    .max(12),
-  termsAccepted: z.literal(true),
-  termsVersion: z.string(),
-});
 app.post(
   "/api/owner/listings",
   auth,
@@ -281,7 +262,7 @@ app.post(
     if (!config.commercialEnabled)
       throw fail(
         503,
-        "Contratações ainda não estão habilitadas. Fale com o corretor.",
+        "Contratações ainda não estão habilitadas. Fale com o suporte.",
       );
     const { termsAccepted, termsVersion, couponCode, couponVersion, ...d } =
       listingSchema.parse(q.body);
@@ -317,15 +298,12 @@ app.post(
           ownerId: q.user.id,
           ...promotion,
           durationDays: config.durationDays,
-          commissionBps:
-            d.purpose === "SALE"
-              ? config.saleCommissionBps
-              : config.rentCommissionBps,
+          commissionBps: 0,
           termsVersion,
           termsText:
             terms({ ...config, adPrice: promotion.adPrice }, d.purpose) +
             (couponCode
-              ? ` Cupom ${promotion.couponCode}: preço original R$ ${(adPrice / 100).toFixed(2)}, desconto R$ ${((adPrice - promotion.adPrice) / 100).toFixed(2)}. A promoção refere-se à divulgação e não altera a comissão de intermediação.`
+              ? ` Cupom ${promotion.couponCode}: preço original R$ ${(adPrice / 100).toFixed(2)}, desconto R$ ${((adPrice - promotion.adPrice) / 100).toFixed(2)}. A promoção refere-se somente à divulgação.`
               : ""),
           acceptedAt: new Date(),
         },
@@ -435,6 +413,59 @@ app.post(
     r.json(confirmed);
   }),
 );
+app.get(
+  "/api/listings/:id/contact",
+  wrap(async (q, r) => {
+    const l = await db.listing.findFirst({
+      where: { id: q.params.id, ...publicWhere() },
+    });
+    if (!l) throw fail(404, "Anúncio indisponível.");
+    const whatsapp = whatsappFor(l);
+    if (!whatsapp)
+      throw fail(409, "O anunciante ainda precisa autorizar o contato direto.");
+    r.set("Cache-Control", "no-store").json({ whatsapp });
+  }),
+);
+app.post(
+  "/api/owner/listings/:id/contact",
+  auth,
+  requireAdvertiser,
+  wrap(async (q, r) => {
+    const { ownerPhone } = z
+      .object({ ownerPhone: contactPhone, contactAccepted: z.literal(true) })
+      .parse(q.body);
+    const l = await owned(q);
+    if (l.ownerId !== q.user.id)
+      throw fail(
+        403,
+        "Somente o anunciante pode autorizar seu contato público.",
+      );
+    await db.$transaction(async (tx) => {
+      await tx.listing.update({
+        where: { id: l.id },
+        data: { ownerPhone, contactMode: "DIRECT" },
+      });
+      await audit(tx, q.user.id, "DIRECT_CONTACT_AUTHORIZED", l.id);
+    });
+    r.json({ ok: true });
+  }),
+);
+app.post(
+  "/api/owner/listings/:id/close",
+  auth,
+  requireAdvertiser,
+  wrap(async (q, r) => {
+    const l = await owned(q);
+    await db.$transaction(async (tx) => {
+      await tx.listing.update({
+        where: { id: l.id },
+        data: { status: "CLOSED" },
+      });
+      await audit(tx, q.user.id, "LISTING_CLOSED", l.id);
+    });
+    r.json({ ok: true });
+  }),
+);
 const leadLimit = rateLimit({
   windowMs: 3600000,
   limit: 10,
@@ -456,12 +487,15 @@ app.post(
     const l = await db.listing.findFirst({
       where: { id: q.params.id, ...publicWhere() },
     });
-    if (!l) throw fail(404, "Imóvel indisponível.");
+    if (!l) throw fail(404, "Anúncio indisponível.");
+    const whatsapp = whatsappFor(l);
+    if (!whatsapp)
+      throw fail(409, "O anunciante ainda precisa autorizar o contato direto.");
     const lead = await db.lead.create({
       data: { ...d, listingId: l.id, consentAt: new Date() },
     });
     r.status(201).json({
-      whatsapp: `https://wa.me/${config.brokerPhone}?text=${encodeURIComponent(`Olá, ${config.brokerName}! Tenho interesse em ${l.title}. Referência ${l.id}. Atendimento ${lead.id}. Meu nome é ${d.name}. ${d.message}`)}`,
+      whatsapp,
     });
   }),
 );
@@ -487,7 +521,7 @@ app.post(
     const { approve } = z.object({ approve: z.boolean() }).parse(q.body);
     await db.$transaction(async (tx) => {
       const l = await tx.listing.findUnique({ where: { id: q.params.id } });
-      if (!l) throw fail(404, "Imóvel não encontrado.");
+      if (!l) throw fail(404, "Anúncio não encontrado.");
       if (["CLOSED", "CANCELLED"].includes(l.status))
         throw fail(409, "Anúncio encerrado.");
       if (approve && (!l.paidAt || l.affiliateVoidedAt))
@@ -568,6 +602,11 @@ app.post(
       const l = await tx.listing.findUnique({ where: { id: q.params.id } });
       if (!l || l.status !== "PUBLISHED")
         throw fail(409, "O anúncio deve estar publicado.");
+      if (l.termsVersion.startsWith("2026-11-classifieds"))
+        throw fail(
+          409,
+          "Este anúncio não possui intermediação. Encerre a divulgação pelo painel.",
+        );
       const deal = await tx.deal.create({
         data: {
           ...d,

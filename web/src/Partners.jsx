@@ -97,8 +97,8 @@ export function CouponField({ request, plan, onChange, onPendingChange }) {
         </p>
       )}
       <small>
-        O desconto só vale após aplicar o cupom. Não altera a comissão de
-        intermediação do imóvel.
+        O desconto só vale após aplicar o cupom e é aplicado somente ao valor da
+        divulgação.
       </small>
     </section>
   );

@@ -28,16 +28,12 @@ export default function CommercialSettings({ request, onConfigChange }) {
           const updated = await request("/admin/settings", {
             method: "PUT",
             body: {
-              saleCommissionBps: Math.round(Number(f.sale) * 100),
-              rentCommissionBps: Math.round(Number(f.rent) * 100),
               enabled: f.enabled === "on",
             },
           });
           setSettings(updated);
           onConfigChange(updated);
-          setMessage(
-            "Configurações salvas. Os novos percentuais valem somente para novos anúncios.",
-          );
+          setMessage("Configurações de contratação salvas.");
         } catch (e) {
           setError(e.message);
         } finally {
@@ -45,39 +41,24 @@ export default function CommercialSettings({ request, onConfigChange }) {
         }
       }}
     >
-      <h2>Comissões e pagamentos</h2>
+      <h2>Divulgação e pagamentos</h2>
       <p>
-        Defina as comissões conforme o contrato de intermediação. Anúncios já
-        cadastrados mantêm os percentuais aceitos no cadastro.
+        O Negocieê cobra somente pela divulgação. A negociação é direta com o
+        anunciante, sem comissão nos novos anúncios.
       </p>
-      <div className="form-grid">
-        <label className="field">
-          <span>Comissão de venda (%)</span>
-          <input
-            name="sale"
-            type="number"
-            min="0"
-            max="100"
-            step="0.01"
-            defaultValue={settings.saleCommissionBps / 100}
-            required
-          />
-          <small>Percentual sobre o preço final de venda.</small>
-        </label>
-        <label className="field">
-          <span>Comissão de aluguel (%)</span>
-          <input
-            name="rent"
-            type="number"
-            min="0"
-            max="100"
-            step="0.01"
-            defaultValue={settings.rentCommissionBps / 100}
-            required
-          />
-          <small>Percentual sobre um aluguel mensal.</small>
-        </label>
-      </div>
+      <p>
+        Divulgação:{" "}
+        {(settings.adPrice / 100).toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        })}{" "}
+        · Destaque:{" "}
+        {(settings.featuredPrice / 100).toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        })}{" "}
+        · {settings.durationDays} dias.
+      </p>
       <div className="notice">
         <strong>
           Mercado Pago:{" "}
@@ -104,8 +85,8 @@ export default function CommercialSettings({ request, onConfigChange }) {
         Ativar contratação e pagamento de novos anúncios
       </label>
       <p>
-        Para ativar, as duas comissões devem ser maiores que zero e as
-        credenciais do Mercado Pago precisam estar configuradas.
+        Para ativar, as credenciais do Mercado Pago e os preços dos planos
+        precisam estar configurados.
       </p>
       {error && (
         <p className="notice error" role="alert">
