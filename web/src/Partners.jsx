@@ -1,3 +1,4 @@
+import { PdfButton } from "./Reports.jsx";
 import React, { useEffect, useRef, useState } from "react";
 import {
   money,
@@ -236,6 +237,13 @@ export function PartnerDashboard({ request }) {
           {data.payouts.map((p) => (
             <article className="form-panel" key={p.id}>
               <PayoutInfo payout={p} />
+              {p.status === "PAID" && (
+                <PdfButton
+                  request={request}
+                  path={`/receipts/payouts/${p.id}`}
+                  filename={`recibo-repasse-${p.id}.pdf`}
+                />
+              )}
             </article>
           ))}
           <h2>Extrato de créditos</h2>

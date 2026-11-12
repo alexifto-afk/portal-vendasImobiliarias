@@ -1,3 +1,4 @@
+import { PdfButton } from "./Reports.jsx";
 import RecordsTable from "./RecordsTable.jsx";
 import PartnerAccessForm from "./PartnerAccessForm.jsx";
 import React, { useEffect, useState } from "react";
@@ -707,6 +708,13 @@ export default function AdminPartners({ request }) {
             <>
               <p>Parceiro: {dialog.row.partner.user.name}</p>
               <PayoutInfo payout={dialog.row} />
+              {dialog.row.status === "PAID" && (
+                <PdfButton
+                  request={request}
+                  path={`/receipts/payouts/${dialog.row.id}`}
+                  filename={`recibo-repasse-${dialog.row.id}.pdf`}
+                />
+              )}
               {dialog.row.status === "REQUESTED" && (
                 <>
                   <ActionForm
