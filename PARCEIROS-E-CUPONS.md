@@ -28,7 +28,7 @@ No mesmo painel, preencha **Novo cupom**:
 - Parceiro e código exclusivo, de 3 a 32 letras/números, `_` ou `-`. O sistema normaliza para maiúsculas.
 - Desconto fixo em reais para o anunciante e crédito fixo em reais para o parceiro.
 - Plano Divulgação, Destaque ou ambos.
-- Prazo de liberação do crédito: de 1 a 365 dias a partir da confirmação do pagamento. Configure o prazo comercial combinado. Esse prazo não impede chargebacks futuros.
+- Prazo de liberação do crédito: de 0 a 365 dias a partir da confirmação do pagamento. Com 0 dias, o crédito fica disponível assim que o pagamento é confirmado; o repasse continua sujeito à solicitação de saque e ao valor mínimo. Configure o prazo comercial combinado. Esse prazo não impede chargebacks futuros.
 - Data e horário de expiração, no horário local do seu navegador.
 - Limite opcional de anúncios: cada **cadastro concluído** reserva uma utilização, mesmo antes de pagar. Não é limite de pagamentos. Reservas não são liberadas automaticamente; um cadastro abandonado continua consumindo a utilização.
 
