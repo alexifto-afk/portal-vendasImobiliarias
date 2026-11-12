@@ -1,3 +1,4 @@
+import MaskedInput from "./MaskedInput.jsx";
 import React, { useEffect, useState } from "react";
 export function IdentityFields({ values = {}, requireComplete = true }) {
   return (
@@ -16,7 +17,8 @@ export function IdentityFields({ values = {}, requireComplete = true }) {
       <div className="form-grid">
         <label className="field">
           <span>CPF</span>
-          <input
+          <MaskedInput
+            mask="cpf"
             name="cpf"
             inputMode="numeric"
             autoComplete="off"
@@ -28,7 +30,8 @@ export function IdentityFields({ values = {}, requireComplete = true }) {
         </label>
         <label className="field">
           <span>Celular com DDD</span>
-          <input
+          <MaskedInput
+            mask="phone"
             name="phone"
             type="tel"
             autoComplete="tel"

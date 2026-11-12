@@ -1,3 +1,4 @@
+import ListingRegionMap from "./ListingRegionMap.jsx";
 import AdvertiserContact, { AuthorizeContact } from "./AdvertiserContact.jsx";
 import ListingWizard from "./ListingWizard.jsx";
 import {
@@ -977,6 +978,7 @@ function Property({ listing: l, demo }) {
           ))}
         </div>
       )}
+      {!demo && <ListingRegionMap key={l.id} listing={l} />}
       {demo ? (
         <div className="notice">
           Este é um exemplo visual. O contato está disponível somente nos

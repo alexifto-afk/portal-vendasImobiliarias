@@ -1,3 +1,4 @@
+import MaskedInput from "./MaskedInput.jsx";
 import React, { useState } from "react";
 export default function AdvertiserContact({ listing, request }) {
   const [error, setError] = useState(""),
@@ -84,7 +85,8 @@ export function AuthorizeContact({ listing, request, onSaved }) {
       </p>
       <label className="field">
         <span>WhatsApp público com DDD</span>
-        <input
+        <MaskedInput
+          mask="phone"
           name="ownerPhone"
           type="tel"
           defaultValue={listing.ownerPhone}

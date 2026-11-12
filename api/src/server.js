@@ -1,3 +1,4 @@
+import { registerVehicleCatalog } from "./vehicle-catalog.js";
 import {
   listingSchema,
   catalogFilter,
@@ -150,6 +151,7 @@ async function mp(path, options = {}) {
     );
   }
 }
+registerVehicleCatalog(app, { wrap });
 app.get("/api/health", (_q, r) => r.json({ ok: true }));
 const getCommercial = registerCommercialRoutes(app, {
   db,

@@ -1,3 +1,4 @@
+import MaskedInput from "./MaskedInput.jsx";
 import React from "react";
 export function readPaymentDetails(form) {
   return {
@@ -40,7 +41,8 @@ export default function PaymentFields() {
       </div>
       <label className="field">
         <span>Telefone do pagador com DDD</span>
-        <input
+        <MaskedInput
+          mask="phone"
           name="billingPhone"
           type="tel"
           autoComplete="billing tel"
@@ -51,7 +53,8 @@ export default function PaymentFields() {
       </label>
       <label className="field">
         <span>CPF do pagador</span>
-        <input
+        <MaskedInput
+          mask="cpf"
           name="billingCpf"
           inputMode="numeric"
           maxLength={14}
