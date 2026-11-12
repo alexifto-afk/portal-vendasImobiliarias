@@ -1,15 +1,31 @@
 import React, { useEffect, useRef, useId } from "react";
 import { X } from "lucide-react";
-export default function Dialog({ title, children, onClose, busy = false }) {
+import { createPortal } from "react-dom";
+export default function Dialog({
+  title,
+  children,
+  onClose,
+  busy = false,
+  className = "",
+  portal = false,
+}) {
   const root = useRef(null),
     titleId = useId();
   useEffect(() => {
     const previous = document.activeElement;
-    const focusable = () => [
-      ...root.current.querySelectorAll(
-        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
-      ),
-    ];
+    const parentDialog = portal ? previous?.closest('[role="dialog"]') : null;
+    const previousHidden = parentDialog?.getAttribute("aria-hidden");
+    const previousInert = parentDialog?.inert;
+    if (parentDialog) {
+      parentDialog.inert = true;
+      parentDialog.setAttribute("aria-hidden", "true");
+    }
+    const focusable = () =>
+      [
+        ...root.current.querySelectorAll(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex="0"]',
+        ),
+      ].filter((node) => node.getClientRects().length > 0);
     (
       focusable().find((e) => e.tagName === "INPUT") ||
       focusable()[0] ||
@@ -40,13 +56,21 @@ export default function Dialog({ title, children, onClose, busy = false }) {
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = overflow;
+      if (parentDialog) {
+        parentDialog.inert = previousInert;
+        if (previousHidden == null) parentDialog.removeAttribute("aria-hidden");
+        else parentDialog.setAttribute("aria-hidden", previousHidden);
+      }
       if (previous?.isConnected) previous.focus();
     };
   }, [busy]);
-  return (
-    <div className="modal-shade" onClick={() => !busy && onClose()}>
+  const content = (
+    <div
+      className={`modal-shade ${portal ? "portal-dialog-shade" : ""}`}
+      onClick={() => !busy && onClose()}
+    >
       <section
-        className="modal workspace-dialog"
+        className={`modal workspace-dialog ${className}`}
         ref={root}
         role="dialog"
         aria-modal="true"
@@ -67,4 +91,5 @@ export default function Dialog({ title, children, onClose, busy = false }) {
       </section>
     </div>
   );
+  return portal ? createPortal(content, document.body) : content;
 }

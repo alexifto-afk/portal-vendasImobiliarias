@@ -1,8 +1,10 @@
+import ApproximateRegionMap from "./ApproximateRegionMap.jsx";
 import ListingRegionMap from "./ListingRegionMap.jsx";
 import AdvertiserContact, { AuthorizeContact } from "./AdvertiserContact.jsx";
 import ListingWizard from "./ListingWizard.jsx";
 import {
   categories,
+  categoryFor,
   typeNames,
   states,
   listingFeatures,
@@ -20,6 +22,7 @@ import {
   ArrowUpRight,
   ArrowRight,
   MapPin,
+  Map as MapIcon,
   House,
   Search,
   Menu,
@@ -954,9 +957,30 @@ function Auth({ onSuccess }) {
   );
 }
 function Property({ listing: l, demo }) {
+  const [mapOpen, setMapOpen] = useState(false);
+  const realEstate = (l.category || categoryFor(l.type)) === "REAL_ESTATE";
   return (
     <>
-      <Photo className="detail-cover" src={l.images[0]} alt={l.title} />
+      <div className="property-detail-cover">
+        <Photo className="detail-cover" src={l.images[0]} alt={l.title} />
+        {!demo && realEstate && (
+          <button
+            type="button"
+            className="property-map-button"
+            aria-label="Abrir mapa da localização aproximada"
+            onClick={() => setMapOpen(true)}
+          >
+            <MapIcon size={19} /> Mapa
+          </button>
+        )}
+      </div>
+      {mapOpen && (
+        <ApproximateRegionMap
+          listing={l}
+          request={api}
+          onClose={() => setMapOpen(false)}
+        />
+      )}
       <div className="kicker">
         {typeNames[l.type]} · {l.purpose === "RENT" ? "PARA ALUGAR" : "À VENDA"}
       </div>
@@ -978,7 +1002,7 @@ function Property({ listing: l, demo }) {
           ))}
         </div>
       )}
-      {!demo && <ListingRegionMap key={l.id} listing={l} />}
+      {!demo && !realEstate && <ListingRegionMap key={l.id} listing={l} />}
       {demo ? (
         <div className="notice">
           Este é um exemplo visual. O contato está disponível somente nos
