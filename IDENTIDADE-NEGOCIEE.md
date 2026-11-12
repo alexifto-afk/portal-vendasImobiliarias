@@ -1,6 +1,7 @@
 # Identidade Negocieê
 
-**Nome:** Negocieê (com dois “e” no final; o último tem circunflexo).  
+**Nome:** Negocieê (com dois “e” no final; o último tem circunflexo).
+
 **Slogan aprovado:** Seu lugar para comprar, vender e alugar.
 
 A identidade usa azul-violeta `#5845F5`, turquesa `#18CDBA`, fundos claros frios e texto escuro. O símbolo de conexão/troca representa uma marca de classificados ampla. Esta entrega aplica a marca aos módulos de imóveis existentes; as categorias de veículos, eletros e outros produtos exigem uma atualização funcional própria.
