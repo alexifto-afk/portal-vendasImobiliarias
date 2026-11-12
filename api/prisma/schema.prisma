@@ -214,3 +214,43 @@ model PartnerPayout {
   resolvedAt DateTime?
   @@index([partnerId, status])
 }
+
+model WhatsappContact {
+  id String @id @default(cuid())
+  phone String @unique
+  status String @default("PENDING")
+  consentVersion String?
+  consentAt DateTime?
+  revokedAt DateTime?
+  pendingTokenHash String? @unique
+  tokenExpiresAt DateTime?
+  createdAt DateTime @default(now())
+  deliveries WhatsappDelivery[]
+  @@index([status, createdAt])
+}
+model WhatsappCampaign {
+  id String @id @default(cuid())
+  title String
+  listingIds String[]
+  messageText String
+  status String @default("DRAFT")
+  createdById String
+  createdAt DateTime @default(now())
+  startedAt DateTime?
+  completedAt DateTime?
+  deliveries WhatsappDelivery[]
+}
+model WhatsappDelivery {
+  id String @id @default(cuid())
+  campaignId String
+  campaign WhatsappCampaign @relation(fields:[campaignId],references:[id])
+  contactId String
+  contact WhatsappContact @relation(fields:[contactId],references:[id])
+  status String @default("PENDING")
+  providerMessageId String? @unique
+  errorCode String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([campaignId, contactId])
+  @@index([status, createdAt])
+}

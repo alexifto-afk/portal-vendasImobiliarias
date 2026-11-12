@@ -1,3 +1,4 @@
+import WhatsappAdmin, { WhatsappSignup } from "./WhatsappCampaigns.jsx";
 import Reports, { PdfButton } from "./Reports.jsx";
 import ListingGallery from "./ListingGallery.jsx";
 import StateCityFields from "./StateCityFields.jsx";
@@ -215,6 +216,25 @@ function App() {
       document.removeEventListener("visibilitychange", visible);
     };
   }, [view]);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("anuncio");
+    if (!id || id.length > 100) return;
+    let active = true;
+    api(`/listings/${encodeURIComponent(id)}`)
+      .then((listing) => {
+        if (active) {
+          setSelected(listing);
+          setModal("property");
+          setOffline(false);
+        }
+      })
+      .catch((error) => {
+        if (active) setError(error.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   const go = (v) => {
     setView(v);
     setMobile(false);
@@ -669,6 +689,7 @@ function App() {
                 </div>
               )}
             </section>
+            <WhatsappSignup request={api} />
             <section className="sell-banner">
               <div>
                 <span className="eyebrow">PARA QUEM QUER ANUNCIAR</span>
@@ -1514,6 +1535,7 @@ function Admin({ config, setError, onConfigChange, userName }) {
           ["leads", "Contatos antigos"],
           ["audit", "Histórico"],
           ["reports", "Relatórios PDF"],
+          ["whatsapp", "WhatsApp e campanhas"],
           ["settings", "Configurações"],
           ["partners", "Parceiros e cupons"],
           ["test-checkout", "Teste Mercado Pago"],
@@ -1525,7 +1547,9 @@ function Admin({ config, setError, onConfigChange, userName }) {
         aria-labelledby={`admin-tab-${tab}`}
         tabIndex={0}
       >
-        {tab === "reports" ? (
+        {tab === "whatsapp" ? (
+          <WhatsappAdmin request={api} />
+        ) : tab === "reports" ? (
           <Reports request={api} />
         ) : tab === "customers" ? (
           <Customers request={api} onOpenPartners={() => setTab("partners")} />
