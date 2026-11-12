@@ -2582,3 +2582,87 @@ footer .brand-tagline {
   display: inline-flex;
   margin-top: 12px;
 }
+
+.property-detail-cover {
+  position: relative;
+  margin-bottom: 25px;
+}
+.property-detail-cover .detail-cover {
+  display: block;
+  margin-bottom: 0;
+}
+.property-map-button {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  background: #262333ef;
+  border: 1px solid #ffffffb3;
+  border-radius: 24px;
+  padding: 10px 16px;
+  font-weight: 700;
+  box-shadow: 0 3px 14px #0003;
+}
+.property-map-button:hover {
+  background: #5845f5;
+}
+.portal-dialog-shade {
+  z-index: 1100;
+}
+.region-map-dialog {
+  width: 900px;
+  max-width: 94vw;
+  padding: 28px;
+}
+.region-map-dialog > h2 {
+  margin-top: 5px;
+}
+.region-map-canvas,
+.region-map-loading {
+  width: 100%;
+  height: min(58vh, 520px);
+  min-height: 280px;
+  border-radius: 12px;
+  background: #e8e8f2;
+}
+.region-map-canvas {
+  isolation: isolate;
+  z-index: 0;
+}
+.region-map-loading {
+  display: grid;
+  place-items: center;
+  color: #57526f;
+}
+.region-map-dialog .region-map-label {
+  color: #57526f;
+  margin: 0 0 16px;
+}
+.region-map-dialog .region-map-explanation {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 16px 0 8px;
+}
+.region-map-dialog .leaflet-control a {
+  color: #3524ae;
+}
+.region-map-dialog .leaflet-control-zoom a {
+  color: #29233f;
+}
+@media (max-width: 760px) {
+  .region-map-dialog {
+    padding: 24px 16px 18px;
+    max-width: 100%;
+  }
+  .region-map-dialog > h2 {
+    font-size: 23px;
+  }
+  .region-map-canvas,
+  .region-map-loading {
+    height: 52dvh;
+    min-height: 260px;
+  }
+}

@@ -184,3 +184,7 @@ Veja [IDENTIDADE-NEGOCIEE.md](IDENTIDADE-NEGOCIEE.md) para a marca aprovada, cor
 ## Veículos, máscaras e mapa
 
 Veja [VEICULOS-MASCARAS-E-MAPA.md](VEICULOS-MASCARAS-E-MAPA.md) para as listas de marca/modelo/ano, preenchimento manual alternativo, máscaras de CPF/telefone nos formulários e mapa da região nos detalhes dos anúncios de móveis e imóveis.
+
+## Localização aproximada de imóveis
+
+Veja [MAPA-APROXIMADO-IMOVEIS.md](MAPA-APROXIMADO-IMOVEIS.md) para o botão Mapa sobre a foto, janela com círculo geográfico, critérios da região aproximada e publicação da atualização.

@@ -1,3 +1,4 @@
+import { registerListingRegionRoutes } from "./listing-region.js";
 import { registerVehicleCatalog } from "./vehicle-catalog.js";
 import {
   listingSchema,
@@ -152,6 +153,7 @@ async function mp(path, options = {}) {
   }
 }
 registerVehicleCatalog(app, { wrap });
+registerListingRegionRoutes(app, { db, wrap, publicWhere });
 app.get("/api/health", (_q, r) => r.json({ ok: true }));
 const getCommercial = registerCommercialRoutes(app, {
   db,
