@@ -68,7 +68,8 @@ export function PhotoPicker({ photos, setPhotos, disabled, request }) {
   };
   const remove = async (photo) => {
     try {
-      if (photo.id) await request(`/uploads/${photo.id}`, { method: "DELETE" });
+      if (photo.id && !photo.existing)
+        await request(`/uploads/${photo.id}`, { method: "DELETE" });
       setPhotos((previous) => previous.filter((p) => p.key !== photo.key));
       URL.revokeObjectURL(photo.preview);
       setError("");

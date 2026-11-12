@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from "react";
 const supported = ["CAR", "MOTORCYCLE", "TRUCK"];
-export default function VehicleFields({ type, values, setValues, request }) {
-  const [manual, setManual] = useState(!supported.includes(type)),
+export default function VehicleFields({
+  type,
+  values,
+  setValues,
+  request,
+  startManual = false,
+}) {
+  const [manual, setManual] = useState(
+      startManual || !supported.includes(type),
+    ),
     [brand, setBrand] = useState(""),
     [model, setModel] = useState("");
   const [brands, setBrands] = useState([]),

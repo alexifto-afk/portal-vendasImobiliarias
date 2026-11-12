@@ -1,3 +1,6 @@
+import RecordsTable from "./RecordsTable.jsx";
+import RenewListing from "./RenewListing.jsx";
+import { listingState } from "./listing-lifecycle.js";
 import ApproximateRegionMap from "./ApproximateRegionMap.jsx";
 import ListingRegionMap from "./ListingRegionMap.jsx";
 import AdvertiserContact, { AuthorizeContact } from "./AdvertiserContact.jsx";
@@ -108,10 +111,11 @@ const demo = [
 ];
 let accessToken = sessionStorage.getItem("portal-token") || "";
 async function api(path, options = {}) {
+  const { responseType, ...requestOptions } = options;
   let r;
   try {
     r = await fetch(API + path, {
-      ...options,
+      ...requestOptions,
       headers: {
         ...(options.body instanceof FormData
           ? {}
@@ -132,6 +136,7 @@ async function api(path, options = {}) {
       "Não foi possível conectar ao servidor. Tente novamente em instantes.",
     );
   }
+  if (r.ok && responseType === "blob") return r.blob();
   const d = await r
     .json()
     .catch(() => ({ error: "Resposta inválida do servidor." }));
@@ -163,12 +168,6 @@ function App() {
     [sort, setSort] = useState("recommended"),
     [mobile, setMobile] = useState(false);
   useEffect(() => {
-    Promise.all([
-      api("/config").then(setConfig),
-      api("/listings").then(setListings),
-    ])
-      .catch(() => setOffline(true))
-      .finally(() => setLoading(false));
     if (accessToken) {
       const restoredToken = accessToken;
       api("/me")
@@ -184,6 +183,36 @@ function App() {
         });
     }
   }, []);
+  useEffect(() => {
+    if (view !== "home") return;
+    let active = true;
+    const refresh = () =>
+      Promise.all([api("/config"), api("/listings")])
+        .then(([configuration, rows]) => {
+          setConfig(configuration);
+          if (active) {
+            setListings(rows);
+            setOffline(false);
+          }
+        })
+        .catch(() => {
+          if (active) setOffline(true);
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    const visible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", visible);
+    };
+  }, [view]);
   const go = (v) => {
     setView(v);
     setMobile(false);
@@ -741,7 +770,13 @@ function App() {
       ) : view === "partner" ? (
         <PartnerDashboard request={api} />
       ) : view === "owner" ? (
-        <Owner config={config} setError={setError} />
+        <Owner
+          config={config}
+          setError={setError}
+          onListingChange={(id) =>
+            setListings((previous) => previous.filter((item) => item.id !== id))
+          }
+        />
       ) : (
         <Admin
           config={config}
@@ -1014,12 +1049,20 @@ function Property({ listing: l, demo }) {
     </>
   );
 }
-function Owner({ config, setError }) {
+function Owner({ config, setError, onListingChange }) {
   const [items, setItems] = useState([]),
     [paymentListing, setPaymentListing] = useState(null),
     [show, setShow] = useState(false),
     [busy, setBusy] = useState(false),
-    [feedback, setFeedback] = useState("");
+    [feedback, setFeedback] = useState(""),
+    [notice, setNotice] = useState(""),
+    [editing, setEditing] = useState(null),
+    [renewing, setRenewing] = useState(null),
+    [clock, setClock] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setClock(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
   const load = () =>
     api("/owner/listings")
       .then(setItems)
@@ -1058,6 +1101,11 @@ function Owner({ config, setError }) {
       setBusy(false);
     }
   }
+  const managementReady = Boolean(config.renewalTermsVersion);
+  const previousPeriods = items.filter((item) =>
+    items.some((child) => child.renewalOfId === item.id),
+  );
+  const currentItems = items.filter((item) => !previousPeriods.includes(item));
   return (
     <main className="container dashboard">
       <div className="section-heading">
@@ -1066,7 +1114,15 @@ function Owner({ config, setError }) {
           <h1>Seus anúncios, novos negócios.</h1>
           <p>Acompanhe a divulgação e o pagamento dos seus anúncios.</p>
         </div>
-        <button className="primary" onClick={() => setShow(!show)}>
+        <button
+          className="primary"
+          onClick={() => {
+            setShow(!show);
+            setEditing(null);
+            setNotice("");
+            setFeedback("");
+          }}
+        >
           <Plus size={17} /> Novo anúncio
         </button>
       </div>
@@ -1080,6 +1136,59 @@ function Owner({ config, setError }) {
         <div className="notice error" role="alert">
           {feedback}
         </div>
+      )}
+      {!managementReady && (
+        <div className="notice" role="status">
+          Edição e renovação temporariamente indisponíveis. Tente novamente em
+          instantes.
+        </div>
+      )}
+      {notice && (
+        <div className="notice" role="status">
+          {notice}
+        </div>
+      )}
+      {renewing && (
+        <RenewListing
+          listing={renewing}
+          config={config}
+          request={api}
+          onClose={() => setRenewing(null)}
+          onCreated={(listing) => {
+            setItems((previous) => [
+              listing,
+              ...previous.filter((item) => item.id !== listing.id),
+            ]);
+            setRenewing(null);
+          }}
+          onResult={(result) => {
+            if (result.url) window.location.assign(result.url);
+            else if (result.paid)
+              setNotice(
+                "Essa renovação já está paga. Acompanhe o anúncio no painel.",
+              );
+            else setFeedback(result.error);
+          }}
+        />
+      )}
+      {editing && (
+        <ListingWizard
+          key={editing.id}
+          initialListing={editing}
+          config={config}
+          request={api}
+          onCancel={() => setEditing(null)}
+          onSaved={(updated) => {
+            setItems((previous) =>
+              previous.map((item) => (item.id === updated.id ? updated : item)),
+            );
+            setEditing(null);
+            setNotice(
+              "Alterações salvas e enviadas para análise. O vencimento original foi mantido.",
+            );
+            onListingChange(updated.id);
+          }}
+        />
       )}
       {show && (
         <ListingWizard
@@ -1097,34 +1206,156 @@ function Owner({ config, setError }) {
         />
       )}
       <div className="owner-list">
-        {items.map((l) => (
-          <article className="manage-card" key={l.id}>
-            <Photo src={l.images[0]} alt="" />
-            <div>
-              <h3>{l.title}</h3>
-              {!["CLOSED", "CANCELLED"].includes(l.status) && (
-                <details>
-                  <summary>Contato do anúncio</summary>
-                  <AuthorizeContact listing={l} request={api} onSaved={load} />
-                </details>
-              )}
-              {l.status === "PUBLISHED" && (
+        {currentItems.map((l) => {
+          const lifecycle = listingState(l, items, new Date(clock));
+          return (
+            <article className="manage-card" key={l.id}>
+              <Photo src={l.images[0]} alt="" />
+              <div>
+                <h3>{l.title}</h3>
+                {!["CLOSED", "CANCELLED"].includes(l.status) &&
+                  !lifecycle.expired && (
+                    <details>
+                      <summary>Contato do anúncio</summary>
+                      <AuthorizeContact
+                        listing={l}
+                        request={api}
+                        onSaved={load}
+                      />
+                    </details>
+                  )}
+                {l.status === "PUBLISHED" && !lifecycle.expired && (
+                  <button
+                    className="text-button"
+                    disabled={busy}
+                    onClick={async () => {
+                      if (
+                        !window.confirm(
+                          "Encerrar a divulgação deste anúncio? Ele deixará de aparecer na busca.",
+                        )
+                      )
+                        return;
+                      setBusy(true);
+                      try {
+                        await api(`/owner/listings/${l.id}/close`, {
+                          method: "POST",
+                        });
+                        await load();
+                        onListingChange(l.id);
+                      } catch (e) {
+                        setFeedback(e.message);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Já negociei / encerrar anúncio
+                  </button>
+                )}
+
+                <p>
+                  {lifecycle.label || statusNames[l.status]}
+                  {l.expiresAt
+                    ? ` · até ${new Date(l.expiresAt).toLocaleDateString("pt-BR")}`
+                    : ""}
+                </p>
+                <p>
+                  {money(l.adPrice)} ·{" "}
+                  {l.affiliateVoidedAt
+                    ? "Pagamento estornado"
+                    : l.paidAt
+                      ? "Pagamento confirmado"
+                      : "Pagamento pendente"}{" "}
+                  {!l.termsVersion.startsWith("2026-11-classifieds") &&
+                    `· Comissão histórica: ${l.commissionBps / 100}%`}
+                  {l.couponCode && ` · cupom ${l.couponCode}`}
+                </p>
+              </div>
+              <div className="action-stack listing-manage-actions">
+                {lifecycle.editable && managementReady && (
+                  <button
+                    className="outline small"
+                    disabled={busy}
+                    onClick={() => {
+                      setEditing(l);
+                      setShow(false);
+                      setFeedback("");
+                      setNotice("");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                  >
+                    Editar anúncio
+                  </button>
+                )}
+                {lifecycle.expired && (
+                  <span className="expired-label">
+                    Prazo encerrado · fora da busca
+                  </span>
+                )}
+                {lifecycle.renewable && managementReady && (
+                  <button
+                    className="primary small"
+                    disabled={busy || !config.commercialEnabled}
+                    onClick={() => {
+                      setRenewing(l);
+                      setFeedback("");
+                      setNotice("");
+                    }}
+                  >
+                    Comprar mais 30 dias
+                  </button>
+                )}
+                {lifecycle.renewal && (
+                  <small>
+                    {lifecycle.renewal.paidAt
+                      ? "Nova divulgação já contratada. Acompanhe o anúncio renovado."
+                      : "Há uma renovação pendente. Use Pagar anúncio no novo período acima."}
+                  </small>
+                )}
+                {!l.paidAt &&
+                  !l.affiliateVoidedAt &&
+                  !["CLOSED", "CANCELLED"].includes(l.status) && (
+                    <div className="action-stack">
+                      <button
+                        className="primary small"
+                        disabled={busy || !config.commercialEnabled}
+                        onClick={() => action(l, true)}
+                      >
+                        Pagar anúncio
+                      </button>
+                      <button
+                        className="outline small"
+                        disabled={busy}
+                        onClick={() => action(l, false)}
+                      >
+                        Já paguei: verificar
+                      </button>
+                    </div>
+                  )}
                 <button
-                  className="text-button"
-                  disabled={busy}
+                  className="text-button danger-text"
+                  disabled={busy || !managementReady}
                   onClick={async () => {
                     if (
                       !window.confirm(
-                        "Encerrar a divulgação deste anúncio? Ele deixará de aparecer na busca.",
+                        "Excluir este anúncio do seu painel e da divulgação? Essa ação não solicita estorno e preserva o histórico financeiro.",
                       )
                     )
                       return;
                     setBusy(true);
+                    setFeedback("");
+                    setNotice("");
                     try {
-                      await api(`/owner/listings/${l.id}/close`, {
-                        method: "POST",
+                      await api(`/owner/listings/${l.id}`, {
+                        method: "DELETE",
                       });
-                      await load();
+                      setItems((previous) =>
+                        previous.filter((item) => item.id !== l.id),
+                      );
+                      onListingChange(l.id);
+                      setNotice(
+                        "Anúncio excluído da divulgação e do seu painel.",
+                      );
                     } catch (e) {
                       setFeedback(e.message);
                     } finally {
@@ -1132,50 +1363,12 @@ function Owner({ config, setError }) {
                     }
                   }}
                 >
-                  Já negociei / encerrar anúncio
+                  Excluir anúncio
                 </button>
-              )}
-
-              <p>
-                {statusNames[l.status]}
-                {l.expiresAt
-                  ? ` · até ${new Date(l.expiresAt).toLocaleDateString("pt-BR")}`
-                  : ""}
-              </p>
-              <p>
-                {money(l.adPrice)} ·{" "}
-                {l.affiliateVoidedAt
-                  ? "Pagamento estornado"
-                  : l.paidAt
-                    ? "Pagamento confirmado"
-                    : "Pagamento pendente"}{" "}
-                {!l.termsVersion.startsWith("2026-11-classifieds") &&
-                  `· Comissão histórica: ${l.commissionBps / 100}%`}
-                {l.couponCode && ` · cupom ${l.couponCode}`}
-              </p>
-            </div>
-            {!l.paidAt &&
-              !l.affiliateVoidedAt &&
-              !["CLOSED", "CANCELLED"].includes(l.status) && (
-                <div className="action-stack">
-                  <button
-                    className="primary small"
-                    disabled={busy || !config.commercialEnabled}
-                    onClick={() => action(l, true)}
-                  >
-                    Pagar anúncio
-                  </button>
-                  <button
-                    className="outline small"
-                    disabled={busy}
-                    onClick={() => action(l, false)}
-                  >
-                    Já paguei: verificar
-                  </button>
-                </div>
-              )}
-          </article>
-        ))}
+              </div>
+            </article>
+          );
+        })}
         {!items.length && !show && (
           <div className="empty">
             <House size={34} />
@@ -1184,6 +1377,32 @@ function Owner({ config, setError }) {
           </div>
         )}
       </div>
+      {previousPeriods.length > 0 && (
+        <details className="form-panel previous-periods">
+          <summary>Divulgações anteriores ({previousPeriods.length})</summary>
+          <p>
+            Histórico dos períodos já contratados. Acompanhe a renovação atual
+            na lista acima.
+          </p>
+          <RecordsTable
+            label="Divulgações anteriores"
+            headings={["Anúncio", "Vencimento", "Divulgação"]}
+            rows={previousPeriods}
+            empty="Nenhuma divulgação anterior."
+            render={(item) => (
+              <tr key={item.id}>
+                <td>{item.title}</td>
+                <td>
+                  {item.expiresAt
+                    ? new Date(item.expiresAt).toLocaleDateString("pt-BR")
+                    : "Sem publicação"}
+                </td>
+                <td>{money(item.adPrice)}</td>
+              </tr>
+            )}
+          />
+        </details>
+      )}
       {paymentListing && (
         <div className="modal-shade">
           <section
@@ -1332,7 +1551,10 @@ function Admin({ config, setError, onConfigChange, userName }) {
                   </p>
                   <p>Endereço privado: {l.privateAddress}</p>
                   <p>
-                    {statusNames[l.status]} ·{" "}
+                    {l.deletedAt
+                      ? "Excluído pelo anunciante"
+                      : statusNames[l.status]}{" "}
+                    ·{" "}
                     {l.affiliateVoidedAt
                       ? "Pagamento estornado"
                       : l.paidAt
@@ -1371,7 +1593,10 @@ function Admin({ config, setError, onConfigChange, userName }) {
                           run(() =>
                             api(`/admin/listings/${l.id}/review`, {
                               method: "POST",
-                              body: { approve: true },
+                              body: {
+                                approve: true,
+                                revision: l.revision ?? 0,
+                              },
                             }),
                           )
                         }
@@ -1385,7 +1610,10 @@ function Admin({ config, setError, onConfigChange, userName }) {
                           run(() =>
                             api(`/admin/listings/${l.id}/review`, {
                               method: "POST",
-                              body: { approve: false },
+                              body: {
+                                approve: false,
+                                revision: l.revision ?? 0,
+                              },
                             }),
                           )
                         }

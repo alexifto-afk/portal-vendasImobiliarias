@@ -28,6 +28,12 @@ export function publicCommercial(state) {
   return {
     ...state.config,
     termsVersion: state.termsVersion,
+    renewalDurationDays: 30,
+    renewalTermsVersion: state.termsVersion + "-renewal-30",
+    renewalTerms: {
+      SALE: terms({ ...state.config, durationDays: 30 }, "SALE"),
+      RENT: terms({ ...state.config, durationDays: 30 }, "RENT"),
+    },
     terms: {
       SALE: terms(state.config, "SALE"),
       RENT: terms(state.config, "RENT"),

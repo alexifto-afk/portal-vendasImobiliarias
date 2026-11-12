@@ -1,3 +1,4 @@
+import { listingFormValues, retainedPhotos } from "./listing-lifecycle.js";
 import VehicleFields from "./VehicleFields.jsx";
 import MaskedInput from "./MaskedInput.jsx";
 import React, { useEffect, useRef, useState } from "react";
@@ -46,15 +47,22 @@ export default function ListingWizard({
   onCreated,
   onResult,
   onCancel,
+  initialListing = null,
+  onSaved,
 }) {
-  const [step, setStep] = useState(0),
-    [values, setValues] = useState(fresh),
+  const editing = Boolean(initialListing);
+  const [step, setStep] = useState(editing ? 1 : 0),
+    [values, setValues] = useState(() =>
+      editing ? listingFormValues(initialListing) : fresh,
+    ),
     [photos, setPhotos] = useState([]),
-    [plan, setPlan] = useState("BASIC"),
+    [plan, setPlan] = useState(initialListing?.plan || "BASIC"),
     [quote, setQuote] = useState(null),
     [couponPending, setCouponPending] = useState(false),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [photoReady, setPhotoReady] = useState(!editing),
+    [photoRetry, setPhotoRetry] = useState(0);
   const formRef = useRef(),
     photoRef = useRef(photos);
   photoRef.current = photos;
@@ -65,6 +73,28 @@ export default function ListingWizard({
   const price =
     promotion?.finalPrice ??
     (plan === "BASIC" ? config.adPrice : config.featuredPrice);
+  useEffect(() => {
+    if (!editing) return;
+    let active = true;
+    setPhotoReady(false);
+    setError("");
+    retainedPhotos(initialListing.images, request)
+      .then((loaded) => {
+        if (active) {
+          setPhotos(loaded);
+          setPhotoReady(true);
+        } else loaded.forEach((photo) => URL.revokeObjectURL(photo.preview));
+      })
+      .catch((e) => {
+        if (active)
+          setError(
+            "Não foi possível carregar as fotos para edição. " + e.message,
+          );
+      });
+    return () => {
+      active = false;
+    };
+  }, [photoRetry]);
   useEffect(() => {
     let active = true;
     request("/me")
@@ -153,14 +183,14 @@ export default function ListingWizard({
       setError("Aplique o cupom ou remova-o antes de continuar.");
       return;
     }
-    if (!config.commercialEnabled) {
+    if (!editing && !config.commercialEnabled) {
       setError("A contratação está temporariamente indisponível.");
       return;
     }
     setBusy(true);
     try {
       const form = new FormData(e.currentTarget),
-        payer = readPaymentDetails(form);
+        payer = editing ? null : readPaymentDetails(form);
       const images = await uploadSelectedPhotos(
         photos,
         request,
@@ -169,34 +199,43 @@ export default function ListingWizard({
             prev.map((p) => (p.key === key ? { ...p, ...uploaded } : p)),
           ),
       );
-      const result = await createListingCheckout(
-        request,
-        {
-          type: values.type,
-          purpose: values.purpose,
-          title: values.title,
-          description: values.description,
-          price: Math.round(Number(values.price) * 100),
-          area: realEstate ? Number(values.area) : 0,
-          bedrooms: realEstate ? Number(values.bedrooms) : 0,
-          details: details(),
-          city: values.city,
-          state: values.state,
-          neighborhood: values.neighborhood,
-          ownerPhone: values.ownerPhone,
-          contactAccepted: form.get("contactAccepted") === "on",
-          images,
-          plan,
-          termsAccepted: form.get("termsAccepted") === "on",
-          termsVersion: config.termsVersion,
-          ...(promotion
-            ? { couponCode: promotion.code, couponVersion: promotion.version }
-            : {}),
-        },
-        onCreated,
-        payer,
-      );
-      onResult(result);
+      const payload = {
+        type: values.type,
+        purpose: values.purpose,
+        title: values.title,
+        description: values.description,
+        price: Math.round(Number(values.price) * 100),
+        area: realEstate ? Number(values.area) : 0,
+        bedrooms: realEstate ? Number(values.bedrooms) : 0,
+        details: details(),
+        city: values.city,
+        state: values.state,
+        neighborhood: values.neighborhood,
+        ownerPhone: values.ownerPhone,
+        contactAccepted: form.get("contactAccepted") === "on",
+        images,
+        plan,
+        termsAccepted: form.get("termsAccepted") === "on",
+        termsVersion: config.termsVersion,
+        ...(promotion
+          ? { couponCode: promotion.code, couponVersion: promotion.version }
+          : {}),
+      };
+      if (editing) {
+        const updated = await request(`/owner/listings/${initialListing.id}`, {
+          method: "PUT",
+          body: { ...payload, revision: initialListing.revision ?? 0 },
+        });
+        onSaved(updated);
+      } else {
+        const result = await createListingCheckout(
+          request,
+          payload,
+          onCreated,
+          payer,
+        );
+        onResult(result);
+      }
     } catch (e) {
       setError(e.message);
     } finally {
@@ -212,8 +251,12 @@ export default function ListingWizard({
     >
       <div className="section-heading">
         <div>
-          <div className="kicker">NOVO ANÚNCIO</div>
-          <h2>O que você quer anunciar?</h2>
+          <div className="kicker">
+            {editing ? "EDITAR ANÚNCIO" : "NOVO ANÚNCIO"}
+          </div>
+          <h2>
+            {editing ? "Atualize seu anúncio" : "O que você quer anunciar?"}
+          </h2>
         </div>
         <button
           type="button"
@@ -225,21 +268,24 @@ export default function ListingWizard({
         </button>
       </div>
       <ol className="wizard-progress" aria-label="Etapas do anúncio">
-        {steps.map((name, i) => (
-          <li
-            key={name}
-            aria-current={step === i ? "step" : undefined}
-            className={step === i ? "current" : i < step ? "complete" : ""}
-          >
-            <span>{i + 1}</span>
-            {name}
-          </li>
-        ))}
+        {steps.map((name, i) =>
+          editing && i === 0 ? null : (
+            <li
+              key={name}
+              aria-current={step === i ? "step" : undefined}
+              className={step === i ? "current" : i < step ? "complete" : ""}
+            >
+              <span>{editing ? i : i + 1}</span>
+              {name}
+            </li>
+          ),
+        )}
       </ol>
       <p className="form-help">
-        Etapa {step + 1} de {steps.length} · {steps[step]}
+        Etapa {editing ? step : step + 1} de {editing ? 4 : steps.length} ·{" "}
+        {editing && step === 4 ? "Revisão da edição" : steps[step]}
       </p>
-      <fieldset disabled={busy} className="wizard-fields">
+      <fieldset disabled={busy || !photoReady} className="wizard-fields">
         <section data-step="0" hidden={step !== 0}>
           <h3 tabIndex={-1}>Escolha a categoria</h3>
           <div className="classified-category-grid">
@@ -307,6 +353,12 @@ export default function ListingWizard({
           <p>
             {categories[category].name} · {typeNames[values.type]}
           </p>
+          {editing && (
+            <p className="form-help">
+              Categoria, tipo, finalidade e plano permanecem os mesmos da
+              contratação.
+            </p>
+          )}
           <div className="form-grid">
             {input("title", "Título do anúncio", {
               required: true,
@@ -350,6 +402,7 @@ export default function ListingWizard({
                     values={values}
                     setValues={setValues}
                     request={request}
+                    startManual={editing}
                   />
                 ) : (
                   <>
@@ -395,7 +448,7 @@ export default function ListingWizard({
           <PhotoPicker
             photos={photos}
             setPhotos={setPhotos}
-            disabled={busy}
+            disabled={busy || !photoReady}
             request={request}
           />
         </section>
@@ -442,7 +495,9 @@ export default function ListingWizard({
           </label>
         </section>
         <section data-step="4" hidden={step !== 4}>
-          <h3 tabIndex={-1}>Revise e escolha seu plano</h3>
+          <h3 tabIndex={-1}>
+            {editing ? "Revise as alterações" : "Revise e escolha seu plano"}
+          </h3>
           <div className="listing-review">
             {photos[0] && <img src={photos[0].preview} alt="Capa escolhida" />}
             <div>
@@ -472,75 +527,109 @@ export default function ListingWizard({
             </div>
           </div>
           <p className="description">{values.description}</p>
-          <div className="plan-options">
-            {[
-              ["BASIC", "Divulgação", config.adPrice],
-              ["FEATURED", "Destaque", config.featuredPrice],
-            ].map(([id, name, value]) => (
-              <label key={id} className={plan === id ? "chosen" : ""}>
-                <input
-                  type="radio"
-                  name="plan"
-                  checked={plan === id}
-                  onChange={() => {
-                    setPlan(id);
-                    setQuote(null);
-                    setCouponPending(false);
-                  }}
-                />
-                <strong>
-                  {name} · {money(value)}
-                </strong>
-                <span>
-                  {config.durationDays} dias
-                  {id === "FEATURED" ? " · prioridade na listagem" : ""}
-                </span>
+          {editing ? (
+            <>
+              <p className="notice">
+                A edição não gera nova cobrança nem aumenta o prazo. Vencimento:{" "}
+                {initialListing.expiresAt
+                  ? new Date(initialListing.expiresAt).toLocaleString("pt-BR")
+                  : "o prazo começa na primeira aprovação"}
+                . O anúncio volta para análise e fica fora da busca até ser
+                aprovado.
+              </p>
+              <label className="checkbox">
+                <input name="editAccepted" type="checkbox" required />
+                Confirmo as alterações e autorizo a divulgação das informações e
+                imagens revisadas.
               </label>
-            ))}
-          </div>
-          <CouponField
-            key={plan}
-            request={request}
-            plan={plan}
-            onChange={setQuote}
-            onPendingChange={setCouponPending}
-          />
-          <PaymentFields />
-          <h3>Somente divulgação, sem comissão</h3>
-          <p>
-            Total do anúncio: <strong>{money(price)}</strong>
-            {promotion && ` com o cupom ${promotion.code}`}. A negociação
-            acontece diretamente entre você e o interessado.
-          </p>
-          <div className="terms-text">
-            {config.terms?.[values.purpose]?.replace(
-              (config.adPrice / 100).toFixed(2),
-              (price / 100).toFixed(2),
-            ) || "Condições ainda não configuradas."}
-          </div>
-          <label className="checkbox">
-            <input
-              key={`${plan}-${values.purpose}-${promotion?.code || ""}-${promotion?.version || ""}-${price}-${config.termsVersion}`}
-              name="termsAccepted"
-              type="checkbox"
-              required
-            />
-            Li e aceito as condições de divulgação e autorizo o uso das imagens.
-          </label>
+            </>
+          ) : (
+            <>
+              <div className="plan-options">
+                {[
+                  ["BASIC", "Divulgação", config.adPrice],
+                  ["FEATURED", "Destaque", config.featuredPrice],
+                ].map(([id, name, value]) => (
+                  <label key={id} className={plan === id ? "chosen" : ""}>
+                    <input
+                      type="radio"
+                      name="plan"
+                      checked={plan === id}
+                      onChange={() => {
+                        setPlan(id);
+                        setQuote(null);
+                        setCouponPending(false);
+                      }}
+                    />
+                    <strong>
+                      {name} · {money(value)}
+                    </strong>
+                    <span>
+                      {config.durationDays} dias
+                      {id === "FEATURED" ? " · prioridade na listagem" : ""}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <CouponField
+                key={plan}
+                request={request}
+                plan={plan}
+                onChange={setQuote}
+                onPendingChange={setCouponPending}
+              />
+              <PaymentFields />
+              <h3>Somente divulgação, sem comissão</h3>
+              <p>
+                Total do anúncio: <strong>{money(price)}</strong>
+                {promotion && ` com o cupom ${promotion.code}`}. A negociação
+                acontece diretamente entre você e o interessado.
+              </p>
+              <div className="terms-text">
+                {config.terms?.[values.purpose]?.replace(
+                  (config.adPrice / 100).toFixed(2),
+                  (price / 100).toFixed(2),
+                ) || "Condições ainda não configuradas."}
+              </div>
+              <label className="checkbox">
+                <input
+                  key={`${plan}-${values.purpose}-${promotion?.code || ""}-${promotion?.version || ""}-${price}-${config.termsVersion}`}
+                  name="termsAccepted"
+                  type="checkbox"
+                  required
+                />
+                Li e aceito as condições de divulgação e autorizo o uso das
+                imagens.
+              </label>
+            </>
+          )}
         </section>
       </fieldset>
+      {editing && !photoReady && (
+        <p className="notice" role="status">
+          Carregando as fotos atuais. Se não carregar,{" "}
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => setPhotoRetry((v) => v + 1)}
+          >
+            tente novamente
+          </button>
+          .
+        </p>
+      )}
       {error && (
         <p role="alert" className="notice error">
           {error}
         </p>
       )}
-      {!config.commercialEnabled && (
+      {!editing && !config.commercialEnabled && (
         <p className="notice">
           Novas contratações estão temporariamente indisponíveis.
         </p>
       )}
       <div className="wizard-actions">
-        {step > 0 && (
+        {step > (editing ? 1 : 0) && (
           <button
             type="button"
             className="outline"
@@ -556,13 +645,21 @@ export default function ListingWizard({
         <button
           className="primary"
           disabled={
-            busy || (step === 4 && (couponPending || !config.commercialEnabled))
+            busy ||
+            !photoReady ||
+            (step === 4 &&
+              !editing &&
+              (couponPending || !config.commercialEnabled))
           }
         >
           {busy
-            ? "Preparando pagamento…"
+            ? editing
+              ? "Salvando alterações…"
+              : "Preparando pagamento…"
             : step === 4
-              ? "Cadastrar e seguir para pagamento"
+              ? editing
+                ? "Salvar alterações e enviar para análise"
+                : "Cadastrar e seguir para pagamento"
               : "Continuar"}
         </button>
       </div>

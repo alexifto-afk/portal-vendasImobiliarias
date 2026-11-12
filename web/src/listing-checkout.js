@@ -5,12 +5,14 @@ export async function createListingCheckout(
   payload,
   onCreated,
   payer,
+  createPath = "/owner/listings",
 ) {
-  const listing = await request("/owner/listings", {
+  const listing = await request(createPath, {
     method: "POST",
     body: payload,
   });
   onCreated(listing);
+  if (listing.paidAt) return { listing, paid: true };
   try {
     const checkout = await request(`/owner/listings/${listing.id}/checkout`, {
       method: "POST",

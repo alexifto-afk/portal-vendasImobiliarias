@@ -26,6 +26,7 @@ export function paymentMatches(payment, listing, collectorId) {
 }
 export function isPublic(listing, now = new Date()) {
   return (
+    !listing.deletedAt &&
     listing.status === "PUBLISHED" &&
     listing.reviewed &&
     Boolean(listing.paidAt) &&
@@ -50,3 +51,12 @@ export const publicFields = {
   bedrooms: true,
   images: true,
 };
+
+export const publicListingWhere = () => ({
+  deletedAt: null,
+  status: "PUBLISHED",
+  reviewed: true,
+  affiliateVoidedAt: null,
+  paidAt: { not: null },
+  expiresAt: { gt: new Date() },
+});

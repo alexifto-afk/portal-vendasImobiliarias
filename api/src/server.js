@@ -1,3 +1,4 @@
+import { registerListingLifecycle } from "./listing-lifecycle.js";
 import { registerListingRegionRoutes } from "./listing-region.js";
 import { registerVehicleCatalog } from "./vehicle-catalog.js";
 import {
@@ -35,7 +36,13 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
-import { terms, commission, paymentMatches, publicFields } from "./rules.js";
+import {
+  terms,
+  commission,
+  paymentMatches,
+  publicFields,
+  publicListingWhere,
+} from "./rules.js";
 const db = new PrismaClient(),
   app = express(),
   env = process.env;
@@ -121,13 +128,7 @@ const admin = (q, r, n) =>
   q.user.role === "ADMIN"
     ? n()
     : n(fail(403, "Acesso restrito ao administrador."));
-const publicWhere = () => ({
-  status: "PUBLISHED",
-  reviewed: true,
-  affiliateVoidedAt: null,
-  paidAt: { not: null },
-  expiresAt: { gt: new Date() },
-});
+const publicWhere = publicListingWhere;
 const tokenFor = (u) =>
   jwt.sign({ sub: u.id, v: u.authVersion ?? 0 }, env.JWT_SECRET, {
     expiresIn: "8h",
@@ -137,7 +138,7 @@ const audit = (tx, actorId, action, entityId, detail = "") =>
   tx.audit.create({ data: { actorId, action, entityId, detail } });
 async function owned(q) {
   const l = await db.listing.findUnique({ where: { id: q.params.id } });
-  if (!l) throw fail(404, "Anúncio não encontrado.");
+  if (!l || l.deletedAt) throw fail(404, "Anúncio não encontrado.");
   if (l.ownerId !== q.user.id && q.user.role !== "ADMIN")
     throw fail(403, "Acesso negado.");
   return l;
@@ -165,6 +166,14 @@ const getCommercial = registerCommercialRoutes(app, {
   audit,
 });
 registerPartnerRoutes(app, { db, auth, admin, wrap, getCommercial, audit });
+registerListingLifecycle(app, {
+  db,
+  auth,
+  requireAdvertiser,
+  wrap,
+  getCommercial,
+  audit,
+});
 registerCustomerRoutes(app, { db, auth, admin, wrap, audit });
 registerImageRoutes(app, { db, auth, wrap, requireAdvertiser });
 registerTestCheckoutRoutes(app, { db, auth, admin, wrap, env });
@@ -331,7 +340,7 @@ app.get(
   wrap(async (q, r) =>
     r.json(
       await db.listing.findMany({
-        where: { ownerId: q.user.id },
+        where: { ownerId: q.user.id, deletedAt: null },
         orderBy: { createdAt: "desc" },
       }),
     ),
@@ -345,7 +354,11 @@ app.post(
     if (!(await getCommercial()).config.commercialEnabled)
       throw fail(503, "Pagamentos desativados.");
     const l = await owned(q);
-    if (l.paidAt || l.affiliateVoidedAt || l.status === "CANCELLED")
+    if (
+      l.paidAt ||
+      l.affiliateVoidedAt ||
+      ["CANCELLED", "CLOSED"].includes(l.status)
+    )
       throw fail(409, "Anúncio já pago ou cancelado.");
     if (l.checkoutUrl) return r.json({ url: l.checkoutUrl });
     const payer = payerSchema.parse(q.body?.payer);
@@ -444,10 +457,15 @@ app.post(
         403,
         "Somente o anunciante pode autorizar seu contato público.",
       );
+    if (l.expiresAt && new Date(l.expiresAt) <= new Date())
+      throw fail(
+        409,
+        "O prazo deste anúncio terminou. Renove a divulgação para atualizar o contato.",
+      );
     await db.$transaction(async (tx) => {
       await tx.listing.update({
         where: { id: l.id },
-        data: { ownerPhone, contactMode: "DIRECT" },
+        data: { ownerPhone, contactMode: "DIRECT", revision: { increment: 1 } },
       });
       await audit(tx, q.user.id, "DIRECT_CONTACT_AUTHORIZED", l.id);
     });
@@ -522,11 +540,21 @@ app.post(
   auth,
   admin,
   wrap(async (q, r) => {
-    const { approve } = z.object({ approve: z.boolean() }).parse(q.body);
-    await db.$transaction(async (tx) => {
+    const { approve, revision } = z
+      .object({
+        approve: z.boolean(),
+        revision: z.number().int().min(0).optional(),
+      })
+      .parse(q.body);
+    await moneyTransaction(db, async (tx) => {
       const l = await tx.listing.findUnique({ where: { id: q.params.id } });
-      if (!l) throw fail(404, "Anúncio não encontrado.");
-      if (["CLOSED", "CANCELLED"].includes(l.status))
+      if (!l || l.deletedAt) throw fail(404, "Anúncio não encontrado.");
+      if ((l.revision > 0 || revision !== undefined) && revision !== l.revision)
+        throw fail(
+          409,
+          "O anúncio foi editado. Atualize a lista e revise a nova versão.",
+        );
+      if (l.deletedAt || ["CLOSED", "CANCELLED"].includes(l.status))
         throw fail(409, "Anúncio encerrado.");
       if (approve && (!l.paidAt || l.affiliateVoidedAt))
         throw fail(409, "Confirme um pagamento sem estorno antes de publicar.");
@@ -604,7 +632,7 @@ app.post(
       .parse(q.body);
     const deal = await db.$transaction(async (tx) => {
       const l = await tx.listing.findUnique({ where: { id: q.params.id } });
-      if (!l || l.status !== "PUBLISHED")
+      if (!l || l.deletedAt || l.status !== "PUBLISHED")
         throw fail(409, "O anúncio deve estar publicado.");
       if (l.termsVersion.startsWith("2026-11-classifieds"))
         throw fail(

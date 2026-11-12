@@ -2,7 +2,7 @@ import multer from "multer";
 import sharp from "sharp";
 import { randomUUID } from "node:crypto";
 import { rateLimit } from "express-rate-limit";
-import { isPublic } from "./rules.js";
+import { publicListingWhere } from "./rules.js";
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 export const uploadPath = (id) => `/uploads/${id}`;
 export const uploadId = (value) =>
@@ -109,25 +109,18 @@ export function registerImageRoutes(
     wrap(async (q, r) => {
       const image = await db.imageUpload.findUnique({
         where: { id: q.params.id },
-        include: {
-          listing: {
-            select: {
-              status: true,
-              reviewed: true,
-              paidAt: true,
-              expiresAt: true,
-            },
-          },
-        },
       });
       if (!image) return r.status(404).end();
-      const published = image.listing && isPublic(image.listing);
-      if (
-        !published &&
-        q.user?.id !== image.ownerId &&
-        q.user?.role !== "ADMIN"
-      )
-        return r.status(404).end();
+      if (q.user?.id !== image.ownerId && q.user?.role !== "ADMIN") {
+        const published = await db.listing.findFirst({
+          where: {
+            ...publicListingWhere(),
+            images: { has: uploadPath(image.id) },
+          },
+          select: { id: true },
+        });
+        if (!published) return r.status(404).end();
+      }
       r.set("Cache-Control", "private, no-store")
         .set("Cross-Origin-Resource-Policy", "cross-origin")
         .type(image.mimeType)
