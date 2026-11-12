@@ -28,7 +28,7 @@ No mesmo painel, preencha **Novo cupom**:
 - Parceiro e código exclusivo, de 3 a 32 letras/números, `_` ou `-`. O sistema normaliza para maiúsculas.
 - Desconto fixo em reais para o anunciante e crédito fixo em reais para o parceiro.
 - Plano Divulgação, Destaque ou ambos.
-- Prazo de liberação do crédito: de 7 a 365 dias a partir da confirmação do pagamento. Configure o prazo comercial combinado. Esse prazo não impede chargebacks futuros.
+- Prazo de liberação do crédito: de 1 a 365 dias a partir da confirmação do pagamento. Configure o prazo comercial combinado. Esse prazo não impede chargebacks futuros.
 - Data e horário de expiração, no horário local do seu navegador.
 - Limite opcional de anúncios: cada **cadastro concluído** reserva uma utilização, mesmo antes de pagar. Não é limite de pagamentos. Reservas não são liberadas automaticamente; um cadastro abandonado continua consumindo a utilização.
 
@@ -86,3 +86,5 @@ PORTAL_PARTNER_TEST_DATABASE_URL="$DATABASE_URL" npm run test:partners
 A suíte cria seus próprios usuários/anúncios e remove os fixtures ao terminar. Os testes de notificações substituem somente a consulta ao Mercado Pago por respostas locais; não enviam cobranças ou Pix reais. Cobrem anúncio com cupom via API real, valores adulterados, privacidade/permissões, limite concorrente, idempotência de créditos, prazo, saldo reservado, aprovação/recusa de saque e estornos antes/depois do repasse.
 
 Para tabelas, pesquisa, edição e exclusão protegida, veja [NAVEGACAO-E-PERFIL.md](NAVEGACAO-E-PERFIL.md).
+
+Alterações no prazo do cupom valem para novos anúncios. Anúncios já contratados mantêm o prazo registrado na contratação.
