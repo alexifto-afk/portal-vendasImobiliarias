@@ -10,9 +10,11 @@ O mapa suporta arrastar, aproximar/afastar e celular. O círculo é uma geometri
 
 O cadastro atual contém bairro, cidade e UF; não contém coordenadas do imóvel. Por isso, o mapa mostra uma **área de referência da região cadastrada**, não a posição ou os limites da propriedade. Não é uma delimitação de lote, fazenda ou distância comprovada do imóvel.
 
-A API consulta somente bairro/cidade/UF no Nominatim/OpenStreetMap. Rejeita ruas, escolas, lojas, edifícios, pontos de interesse, cidades ou estados diferentes. Um resultado regional válido gera um círculo cobrindo sua caixa geográfica, com centro arredondado a três casas decimais, margem de 150 m, raio arredondado para cima a cada 250 m e mínimo de 1 km para bairro.
+A API consulta somente bairro/cidade/UF no Nominatim/OpenStreetMap. Rejeita ruas, escolas, lojas, edifícios, pontos de interesse, cidades ou estados diferentes. O centro é arredondado a três casas decimais.
 
-Se não localizar o bairro, tenta a cidade com raio mínimo de 5 km e mostra um aviso de que a referência é mais ampla. A caixa de um município pode produzir uma área muito maior. Se nem a cidade for confirmada, não inventa coordenadas: apresenta mensagem, nova tentativa e link externo usando somente o nome da região.
+Quando o bairro é um ponto regional do OpenStreetMap (`osm_type=node`), a API usa sua coordenada pública com **raio de 500 m**. A caixa retornada para esses pontos costuma ser uma extensão sintética de vários quilômetros; ela não representa os limites do bairro e não deve dimensionar o círculo. Para bairros delimitados por área, o círculo cobre a caixa da região, com margem de 150 m, arredondamento do raio para cima a cada 250 m e mínimo de 500 m.
+
+Se o bairro informado não for confirmado, a API retorna uma mensagem para confirmar a região com o anunciante, sem substituí-lo pela cidade inteira. Somente dados legados sem bairro podem usar uma referência municipal identificada como tal. Mantém nova tentativa e link externo usando o nome da região.
 
 Não usa GPS do visitante, endereço privado, número da casa, telefone, CPF ou dados de proprietário. As coordenadas retornadas são do centro aproximado de uma região pública, não do imóvel. O endereço exato continua sendo combinado com o anunciante.
 
@@ -35,4 +37,5 @@ Pagamentos, cupons, parceiros, comissões históricas, contatos e anúncios exis
 - Testes de geometria, raio mínimo, caixa inválida, validação de município/UF, rejeição de pontos de interesse, cache, concorrência e intervalo do serviço.
 - Teste HTTP da seleção mínima de dados públicos, resposta sem cache e anúncio indisponível antes/depois da geocodificação.
 - Navegador em computador/celular: botão sobre foto, janela, círculo com zoom, ausência de pino, fechar/reabrir, foco, erro/nova tentativa, aviso de cidade e preservação do mapa de móveis.
-- Consulta real da região pública de Tocantinópolis validou o fallback para município. Não houve cobrança nem envio de endereço privado ao provedor.
+- Consulta real de Centro, Araguatins–TO validou o ponto regional e o raio de 500 m. Não houve cobrança nem envio de endereço privado ao provedor.
+- A mudança não exige novas variáveis nem migração. Publicar a API no Render e o frontend na Vercel; o redeploy limpa o cache em memória das regiões antigas.

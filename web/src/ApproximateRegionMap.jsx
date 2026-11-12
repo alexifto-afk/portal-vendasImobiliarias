@@ -157,9 +157,10 @@ export default function ApproximateRegionMap({ listing, request, onClose }) {
       )}
       {area && <CircleMap key={retry} area={area} />}
       <p className="region-map-explanation">
-        O círculo destaca uma área de referência{" "}
+        O círculo destaca uma área aproximada de referência{" "}
         {area?.level === "city" ? "da cidade" : "do bairro"}, não a posição nem
-        os limites do imóvel. Combine o endereço exato com o anunciante.
+        os limites do imóvel. Ele usa uma referência pública do bairro. Combine
+        o endereço exato com o anunciante.
       </p>
       {area?.level === "city" && (
         <p className="form-help">

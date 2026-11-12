@@ -23,6 +23,27 @@ function distance(a, b) {
 }
 // A circle around a PUBLIC region's bounding box, never a property's address.
 export function approximateArea(result, level) {
+  // OSM place nodes have a synthetic bounding box (often +/-0.02°).
+  // It is not the neighborhood boundary: use the public place reference instead.
+  if (level === "neighborhood" && result.osm_type === "node") {
+    const latitude = Number(result.lat),
+      longitude = Number(result.lon);
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -34 ||
+      latitude > 6 ||
+      longitude < -74 ||
+      longitude > -28
+    )
+      return null;
+    return {
+      latitude: Math.round(latitude * 1000) / 1000,
+      longitude: Math.round(longitude * 1000) / 1000,
+      radiusMeters: 500,
+      level,
+    };
+  }
   if (!Array.isArray(result.boundingbox) || result.boundingbox.length !== 4)
     return null;
   const [south, north, west, east] = result.boundingbox.map(Number);
@@ -39,7 +60,7 @@ export function approximateArea(result, level) {
   const latitude = Math.round(((south + north) / 2) * 1000) / 1000;
   const longitude = Math.round(((west + east) / 2) * 1000) / 1000;
   const radiusMeters = Math.max(
-    level === "city" ? 5000 : 1000,
+    level === "city" ? 5000 : 500,
     Math.ceil(
       (Math.max(
         ...[
@@ -168,6 +189,9 @@ export function regionResolver({
           .filter((item) => regionTypes.includes(item.addresstype))
           .map((item) => ({
             name: item.name,
+            osm_type: item.osm_type,
+            lat: item.lat,
+            lon: item.lon,
             addresstype: item.addresstype,
             boundingbox: item.boundingbox,
             address: Object.fromEntries(
@@ -211,7 +235,7 @@ export function regionResolver({
       if (!existing.area)
         throw fail(
           422,
-          "Não foi possível localizar essa região no mapa. Confirme a localização com o anunciante.",
+          "Não foi possível localizar o bairro no mapa com segurança. Confirme a região com o anunciante.",
         );
       return { ...existing.area };
     }
@@ -229,7 +253,7 @@ export function regionResolver({
             region,
             "neighborhood",
           );
-        if (!area)
+        if (!area && !region.neighborhood)
           area = candidate(
             await search(`${region.city}, ${region.state}, Brasil`),
             region,
@@ -243,7 +267,7 @@ export function regionResolver({
         if (!area)
           throw fail(
             422,
-            "Não foi possível localizar essa região no mapa. Confirme a localização com o anunciante.",
+            "Não foi possível localizar o bairro no mapa com segurança. Confirme a região com o anunciante.",
           );
         return { ...area };
       } catch (e) {

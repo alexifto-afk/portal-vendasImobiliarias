@@ -41,7 +41,7 @@ function fixture(results) {
   });
   return { resolve, urls, times };
 }
-test("círculo cobre região pública, arredonda centro e mantém raio mínimo de 1 km", () => {
+test("círculo cobre região pública, arredonda centro e mantém raio mínimo de 500 m", () => {
   const area = approximateArea(neighborhood, "neighborhood");
   assert.deepEqual(area, {
     latitude: -6.33,
@@ -79,25 +79,48 @@ test("consulta usa só bairro/cidade/UF, compartilha concorrência e cacheia a r
     ["latitude", "longitude", "radiusMeters", "level"].sort(),
   );
 });
-test("não transforma escola/loja/endereço em pino; usa cidade e respeita intervalo do provedor", async () => {
-  const f = fixture((url) =>
-    new URL(url).searchParams.get("q").startsWith("Centro,")
-      ? [
-          {
-            ...neighborhood,
-            addresstype: "amenity",
-            name: "Escola Centro",
-            address: {
-              ...neighborhood.address,
-              house_number: "123",
-              road: "Rua privada",
-            },
-          },
-        ]
-      : [city],
+test("não transforma escola/loja/endereço em região nem troca bairro pela cidade", async () => {
+  const f = fixture(() => [
+    { ...neighborhood, addresstype: "amenity", name: "Escola Centro" },
+    city,
+  ]);
+  await assert.rejects(f.resolve(input), (e) => e.status === 422);
+  assert.equal(f.urls.length, 1);
+  await assert.rejects(f.resolve(input), (e) => e.status === 422);
+  assert.equal(f.urls.length, 1);
+});
+test("Centro de Araguatins usa ponto público do bairro com raio de 500 m, não caixa sintética de vários km", async () => {
+  const result = {
+    ...neighborhood,
+    osm_type: "node",
+    lat: "-5.6488640",
+    lon: "-48.1236783",
+    boundingbox: ["-5.6688640", "-5.6288640", "-48.1436783", "-48.1036783"],
+    address: { ...neighborhood.address, town: "Araguatins" },
+  };
+  const f = fixture(() => [result]);
+  assert.deepEqual(await f.resolve({ ...input, city: "Araguatins" }), {
+    latitude: -5.649,
+    longitude: -48.124,
+    radiusMeters: 500,
+    level: "neighborhood",
+  });
+  assert.equal(
+    approximateArea({ ...result, lat: "invalid" }, "neighborhood"),
+    null,
   );
-  const area = await f.resolve(input);
-  assert.equal(area.level, "city");
+  assert.equal(
+    approximateArea({ ...result, lon: "-10" }, "neighborhood"),
+    null,
+  );
+});
+test("consultas a bairros diferentes respeitam intervalo do provedor", async () => {
+  const f = fixture(() => [neighborhood]);
+  await f.resolve(input);
+  await assert.rejects(
+    f.resolve({ ...input, neighborhood: "Outro bairro" }),
+    (e) => e.status === 422,
+  );
   assert.equal(f.urls.length, 2);
   assert.ok(f.times[1] - f.times[0] >= 1100);
 });
@@ -108,7 +131,7 @@ test("região de outra cidade/UF não é exibida nem substituída por coordenada
   ]);
   await assert.rejects(f.resolve(input), (e) => e.status === 422);
   await assert.rejects(f.resolve(input), (e) => e.status === 422);
-  assert.equal(f.urls.length, 2);
+  assert.equal(f.urls.length, 1);
 });
 test("indisponibilidade permite nova tentativa, sem cachear falha de rede", async () => {
   let fail = true;
