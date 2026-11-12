@@ -154,6 +154,8 @@ test("rota seleciona só região pública e revalida disponibilidade após consu
   const app = express();
   registerListingRegionRoutes(app, {
     wrap: (fn) => (q, r, n) => Promise.resolve(fn(q, r, n)).catch(n),
+    auth: (q, r, next) => next(),
+    requireAdvertiser: (q, r, next) => next(),
     publicWhere: () => ({
       status: "PUBLISHED",
       reviewed: true,
@@ -190,6 +192,8 @@ test("rota seleciona só região pública e revalida disponibilidade após consu
       city: true,
       state: true,
       neighborhood: true,
+      locationLatitude: true,
+      locationLongitude: true,
     });
     assert.equal(queries[0].where.category, "REAL_ESTATE");
     assert.equal(queries[0].where.status, "PUBLISHED");

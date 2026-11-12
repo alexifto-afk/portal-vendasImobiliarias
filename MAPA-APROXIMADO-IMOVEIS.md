@@ -8,7 +8,11 @@ O mapa suporta arrastar, aproximar/afastar e celular. O círculo é uma geometri
 
 ## O que significa o círculo
 
-O cadastro atual contém bairro, cidade e UF; não contém coordenadas do imóvel. Por isso, o mapa mostra uma **área de referência da região cadastrada**, não a posição ou os limites da propriedade. Não é uma delimitação de lote, fazenda ou distância comprovada do imóvel.
+O cadastro e a edição de imóveis agora permitem marcar a localização no mapa. Depois de escolher cidade e bairro/setor, o anunciante toca no mapa ou arrasta o ponto azul, confere o círculo roxo público e confirma. Também pode deslocar o mapa pelo teclado e usar “Marcar no centro do mapa”. Alterar cidade/UF/bairro limpa a seleção anterior. O formulário atual exige confirmação para imóveis; o backend mantém compatibilidade com anúncios antigos sem coordenadas.
+
+O ponto exato é reservado ao anunciante/administrador (`locationLatitude`, `locationLongitude`) e não integra os campos das consultas públicas. A API converte-o para o centro de uma grade de 0,005 grau e retorna somente esse centro aproximado com raio de 500 m (`level=listing`). O círculo cobre a posição marcada sem expor o ponto. A prévia no formulário usa a mesma regra. A renovação conserva a marcação. Não é uma delimitação do imóvel.
+
+Nos anúncios antigos, sem ponto marcado, permanece a referência regional descrita abaixo.
 
 A API consulta somente bairro/cidade/UF no Nominatim/OpenStreetMap. Rejeita ruas, escolas, lojas, edifícios, pontos de interesse, cidades ou estados diferentes. O centro é arredondado a três casas decimais.
 
@@ -16,9 +20,17 @@ Quando o bairro é um ponto regional do OpenStreetMap (`osm_type=node`), a API u
 
 Se o bairro informado não for confirmado, a API retorna uma mensagem para confirmar a região com o anunciante, sem substituí-lo pela cidade inteira. Somente dados legados sem bairro podem usar uma referência municipal identificada como tal. Mantém nova tentativa e link externo usando o nome da região.
 
-Não usa GPS do visitante, endereço privado, número da casa, telefone, CPF ou dados de proprietário. As coordenadas retornadas são do centro aproximado de uma região pública, não do imóvel. O endereço exato continua sendo combinado com o anunciante.
+Não usa GPS do visitante, endereço privado, número da casa, telefone ou CPF nas buscas. Para anúncios marcados, a consulta pública retorna somente o centro aproximado da grade; para anúncios antigos, retorna a referência pública do bairro. O ponto reservado não é enviado ao geocodificador. O endereço exato continua sendo combinado com o anunciante.
+
+## Publicação da marcação no mapa
+
+A migração `202611122130_marked_location` adiciona duas colunas opcionais e uma restrição de coordenadas em par, sem alterar anúncios existentes. Publique primeiro a API no Render: o início normal executa `prisma migrate deploy`. O build precisa executar `npm run generate`, como na configuração atual. Depois publique/confirme o frontend na Vercel. Não há novas variáveis, chave de Google Maps ou dependência paga.
+
+A interface usa Leaflet/OpenStreetMap, como o mapa público existente. Mosaicos e geocodificação dependem da disponibilidade desses serviços. Se a busca de bairro falhar no cadastro, o anunciante pode navegar no mapa e marcar manualmente. Falha ao carregar mosaicos gera aviso para conferir antes de confirmar.
 
 ## API e serviços
+
+`POST /api/owner/location-preview` exige anunciante autenticado, recebe somente bairro/cidade/UF e ajuda a enquadrar o mapa de seleção. Pode usar a cidade como ponto inicial se o bairro não for encontrado; isso nunca confirma uma posição automaticamente.
 
 `GET /api/listings/:id/region` retorna `{latitude, longitude, radiusMeters, level, label}` para imóvel pago, revisado, publicado, vigente e sem estorno. Faz nova verificação após a consulta externa, caso a publicação tenha mudado. A resposta HTTP usa `no-store`.
 
@@ -38,4 +50,4 @@ Pagamentos, cupons, parceiros, comissões históricas, contatos e anúncios exis
 - Teste HTTP da seleção mínima de dados públicos, resposta sem cache e anúncio indisponível antes/depois da geocodificação.
 - Navegador em computador/celular: botão sobre foto, janela, círculo com zoom, ausência de pino, fechar/reabrir, foco, erro/nova tentativa, aviso de cidade e preservação do mapa de móveis.
 - Consulta real de Centro, Araguatins–TO validou o ponto regional e o raio de 500 m. Não houve cobrança nem envio de endereço privado ao provedor.
-- A mudança não exige novas variáveis nem migração. Publicar a API no Render e o frontend na Vercel; o redeploy limpa o cache em memória das regiões antigas.
+- A marcação exige a migração aditiva descrita acima, aplicada pelo início normal da API. Não exige novas variáveis.

@@ -2754,3 +2754,24 @@ footer .brand-tagline {
 .listing-slides .image-arrow {
   pointer-events: none;
 }
+
+.location-picker-canvas {
+  width: 100%;
+  height: 380px;
+  border-radius: 12px;
+  background: #e9e8f2;
+}
+.location-picker-pin {
+  background: #1688e8;
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 1px 7px #0008;
+}
+.location-picker .text-button {
+  margin: 12px 0 0;
+}
+@media (max-width: 600px) {
+  .location-picker-canvas {
+    height: 320px;
+  }
+}

@@ -158,7 +158,13 @@ async function mp(path, options = {}) {
 registerVehicleCatalog(app, { wrap });
 registerReportingRoutes(app, { db, auth, admin, wrap });
 registerLocationRoutes(app, { wrap });
-registerListingRegionRoutes(app, { db, wrap, publicWhere });
+registerListingRegionRoutes(app, {
+  db,
+  wrap,
+  publicWhere,
+  auth,
+  requireAdvertiser,
+});
 app.get("/api/health", (_q, r) => r.json({ ok: true }));
 const getCommercial = registerCommercialRoutes(app, {
   db,

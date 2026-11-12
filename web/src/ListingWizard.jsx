@@ -1,3 +1,4 @@
+import LocationPicker from "./LocationPicker.jsx";
 import StateCityFields from "./StateCityFields.jsx";
 import { listingFormValues, retainedPhotos } from "./listing-lifecycle.js";
 import VehicleFields from "./VehicleFields.jsx";
@@ -39,6 +40,8 @@ const fresh = {
   city: "",
   state: "TO",
   neighborhood: "",
+  locationLatitude: null,
+  locationLongitude: null,
   ownerPhone: "",
 };
 export default function ListingWizard({
@@ -127,7 +130,15 @@ export default function ListingWizard({
           {...(name === "ownerPhone" ? { mask: "phone" } : {})}
           name={name}
           value={values[name]}
-          onChange={(e) => setValues((v) => ({ ...v, [name]: e.target.value }))}
+          onChange={(e) =>
+            setValues((v) => ({
+              ...v,
+              [name]: e.target.value,
+              ...(name === "neighborhood"
+                ? { locationLatitude: null, locationLongitude: null }
+                : {}),
+            }))
+          }
           {...props}
         />
       </label>
@@ -156,6 +167,17 @@ export default function ListingWizard({
     if (index === 3 && !locationReady) {
       setStep(3);
       setError("Selecione o estado e uma cidade da lista antes de continuar.");
+      return false;
+    }
+    if (
+      index === 3 &&
+      realEstate &&
+      (values.locationLatitude == null || values.locationLongitude == null)
+    ) {
+      setStep(3);
+      setError(
+        "Marque e confirme a localização do imóvel no mapa antes de continuar.",
+      );
       return false;
     }
     if (index === 2 && !photos.length) {
@@ -217,6 +239,8 @@ export default function ListingWizard({
         city: values.city,
         state: values.state,
         neighborhood: values.neighborhood,
+        locationLatitude: realEstate ? values.locationLatitude : null,
+        locationLongitude: realEstate ? values.locationLongitude : null,
         ownerPhone: values.ownerPhone,
         contactAccepted: form.get("contactAccepted") === "on",
         images,
@@ -464,7 +488,12 @@ export default function ListingWizard({
             <StateCityFields
               value={values}
               onChange={(location) =>
-                setValues((previous) => ({ ...previous, ...location }))
+                setValues((previous) => ({
+                  ...previous,
+                  ...location,
+                  locationLatitude: null,
+                  locationLongitude: null,
+                }))
               }
               request={request}
               required
@@ -489,6 +518,32 @@ export default function ListingWizard({
               maxLength: 24,
             })}
           </div>
+          {realEstate && (
+            <LocationPicker
+              key={`${values.state}|${values.city}|${values.neighborhood}`}
+              region={{
+                state: values.state,
+                city: values.city,
+                neighborhood: values.neighborhood,
+              }}
+              value={
+                values.locationLatitude == null
+                  ? null
+                  : {
+                      latitude: values.locationLatitude,
+                      longitude: values.locationLongitude,
+                    }
+              }
+              onChange={(point) =>
+                setValues((v) => ({
+                  ...v,
+                  locationLatitude: point?.latitude ?? null,
+                  locationLongitude: point?.longitude ?? null,
+                }))
+              }
+              request={request}
+            />
+          )}
           <p className="notice">
             Mostraremos somente cidade e bairro. O interessado abrirá uma
             conversa diretamente no WhatsApp informado.
@@ -527,6 +582,12 @@ export default function ListingWizard({
               <p>
                 {values.neighborhood} · {values.city}/{values.state}
               </p>
+              {realEstate && (
+                <p>
+                  Localização marcada no mapa · somente a área aproximada será
+                  pública.
+                </p>
+              )}
               <p>WhatsApp: {values.ownerPhone}</p>
               <p>{photos.length} fotos · contato direto com você</p>
             </div>

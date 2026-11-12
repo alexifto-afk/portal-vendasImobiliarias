@@ -41,6 +41,8 @@ export function listingFormValues(l) {
     city: l.city,
     state: l.state || "TO",
     neighborhood: l.neighborhood,
+    locationLatitude: l.locationLatitude ?? null,
+    locationLongitude: l.locationLongitude ?? null,
     ownerPhone: l.ownerPhone,
   };
 }

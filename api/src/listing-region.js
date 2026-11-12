@@ -1,3 +1,4 @@
+import { markedArea } from "./marked-location.js";
 import { z } from "zod";
 import { states } from "./classified-catalog.js";
 const inputSchema = z.object({
@@ -286,8 +287,31 @@ export function regionResolver({
 }
 export function registerListingRegionRoutes(
   app,
-  { db, wrap, publicWhere, resolve = regionResolver() },
+  {
+    db,
+    wrap,
+    publicWhere,
+    auth,
+    requireAdvertiser,
+    resolve = regionResolver(),
+  },
 ) {
+  app.post(
+    "/api/owner/location-preview",
+    auth,
+    requireAdvertiser,
+    wrap(async (q, r) => {
+      const region = inputSchema.parse(q.body);
+      let area;
+      try {
+        area = await resolve(region);
+      } catch (error) {
+        if (error.status !== 422) throw error;
+        area = await resolve({ ...region, neighborhood: "" });
+      }
+      r.set("Cache-Control", "no-store").json(area);
+    }),
+  );
   app.get(
     "/api/listings/:id/region",
     wrap(async (q, r) => {
@@ -298,10 +322,22 @@ export function registerListingRegionRoutes(
       });
       const l = await db.listing.findFirst({
         where: where(),
-        select: { city: true, state: true, neighborhood: true },
+        select: {
+          city: true,
+          state: true,
+          neighborhood: true,
+          locationLatitude: true,
+          locationLongitude: true,
+        },
       });
       if (!l) throw fail(404, "Imóvel indisponível.");
-      const area = await resolve(l);
+      const area =
+        markedArea(l.locationLatitude, l.locationLongitude) ||
+        (await resolve({
+          city: l.city,
+          state: l.state,
+          neighborhood: l.neighborhood,
+        }));
       // Publication can change while an external lookup is in progress.
       if (
         !(await db.listing.findFirst({ where: where(), select: { id: true } }))
