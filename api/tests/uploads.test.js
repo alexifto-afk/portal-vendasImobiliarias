@@ -13,6 +13,21 @@ let server,
 before(async () => {
   const app = express();
   const db = {
+    listing: {
+      findFirst: async ({ where }) => {
+        const image = stored.get(uploadId(where.images.has)),
+          l = image?.listing;
+        return l &&
+          l.status === "PUBLISHED" &&
+          l.reviewed &&
+          l.paidAt &&
+          !l.deletedAt &&
+          !l.affiliateVoidedAt &&
+          new Date(l.expiresAt) > new Date()
+          ? { id: "public-fixture" }
+          : null;
+      },
+    },
     imageUpload: {
       count: async () => 0,
       create: async ({ data }) => stored.set(data.id, data),

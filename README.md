@@ -120,7 +120,7 @@ Configure `VITE_API_URL=https://SUA-API.onrender.com/api` e faça deploy. Coloqu
 - Saques de parceiros continuam por Pix manual fora do portal, com registro administrativo posterior.
 - Registros de negociações e comissões antigas são históricos, sem recálculo automático ou alteração de contratos aceitos.
 - Reembolsos e chargebacks devem ser acompanhados no Mercado Pago. O webhook de produção processa estornos recebidos e retira o anúncio; não há varredura periódica de reconciliação. Confira entregas e retire o anúncio manualmente se necessário. Uma tentativa paga duplicada não gera novo prazo; confira e devolva duplicidades pelo PSP.
-- Há recuperação de senha por código de e-mail após configurar o remetente. O anunciante pode atualizar o contato e encerrar o anúncio; não há edição dos demais campos/renovação, notificações comerciais automáticas nem assinatura digital. As fotos enviadas são validadas, reduzidas e convertidas para WebP, sem os metadados originais.
+- Há recuperação de senha por código de e-mail após configurar o remetente. O anunciante pode atualizar o contato e encerrar o anúncio; há edição durante o prazo contratado e renovação por mais 30 dias. Não há notificações comerciais automáticas nem assinatura digital. As fotos enviadas são validadas, reduzidas e convertidas para WebP, sem os metadados originais.
 - O catálogo retorna até 100 anúncios, o painel até 500 registros e o histórico até 200 eventos recentes. Totais no painel correspondem a essa janela. Paginação e relatórios completos são evolução necessária com aumento de volume.
 - Rate limit é em memória, adequado a instância única; para múltiplas instâncias use armazenamento compartilhado. JWT fica em sessionStorage e expira em 8h; logout remove a sessão do navegador.
 - Imagens de exemplo são externas do Unsplash; fontes do Google Fonts. O catálogo de exemplo só aparece quando a API está indisponível e é identificado. APIs funcionais exigem Neon configurado.
@@ -188,3 +188,7 @@ Veja [VEICULOS-MASCARAS-E-MAPA.md](VEICULOS-MASCARAS-E-MAPA.md) para as listas d
 ## Localização aproximada de imóveis
 
 Veja [MAPA-APROXIMADO-IMOVEIS.md](MAPA-APROXIMADO-IMOVEIS.md) para o botão Mapa sobre a foto, janela com círculo geográfico, critérios da região aproximada e publicação da atualização.
+
+## Gestão e renovação dos anúncios
+
+Veja [EDITAR-EXCLUIR-RENOVAR-ANUNCIOS.md](EDITAR-EXCLUIR-RENOVAR-ANUNCIOS.md) para editar anúncios pagos sem estender o prazo, excluir a divulgação preservando o histórico e contratar mais 30 dias com cupom e novo crédito ao parceiro após pagamento confirmado.

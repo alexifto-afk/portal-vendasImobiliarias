@@ -2666,3 +2666,29 @@ footer .brand-tagline {
     min-height: 260px;
   }
 }
+
+.listing-manage-actions {
+  min-width: 150px;
+  max-width: 240px;
+}
+.listing-manage-actions small {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #625c77;
+}
+.expired-label {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #a54230;
+  padding: 8px 0;
+}
+.danger-text {
+  color: #aa342b;
+}
+@media (max-width: 760px) {
+  .listing-manage-actions {
+    max-width: 100%;
+    width: 100%;
+  }
+}

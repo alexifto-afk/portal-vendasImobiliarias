@@ -41,6 +41,11 @@ model Listing {
   id String @id @default(cuid())
   ownerId String
   owner User @relation(fields: [ownerId], references: [id])
+  deletedAt DateTime?
+  revision Int @default(0)
+  renewalOfId String?
+  renewalOf Listing? @relation("ListingRenewals", fields: [renewalOfId], references: [id])
+  renewals Listing[] @relation("ListingRenewals")
   title String
   description String
   type String
@@ -84,6 +89,8 @@ model Listing {
   createdAt DateTime @default(now())
   @@index([status, expiresAt])
   @@index([category, status, expiresAt])
+  @@index([renewalOfId])
+  @@index([images], type: Gin)
   @@index([couponId, paidAt])
 }
 model Lead {
