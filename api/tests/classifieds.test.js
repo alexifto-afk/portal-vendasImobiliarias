@@ -99,3 +99,35 @@ test("WhatsApp usa somente número autorizado do anúncio e não disponibiliza c
   assert.equal(whatsappFor({ ...l, contactMode: "PRIVATE" }), null);
   assert.equal(whatsappFor({ ...l, ownerPhone: "invalid" }), null);
 });
+
+test("coordenadas do imóvel exigem par válido e não são aceitas em outras categorias", () => {
+  assert.equal(
+    listingSchema.parse({
+      ...base,
+      locationLatitude: -5.648864,
+      locationLongitude: -48.1236783,
+    }).locationLatitude,
+    -5.648864,
+  );
+  assert.equal(listingSchema.parse(base).locationLatitude, null);
+  for (const patch of [
+    { locationLatitude: -5 },
+    { locationLongitude: -48 },
+    { locationLatitude: 90, locationLongitude: -48 },
+    { locationLatitude: -5, locationLongitude: 0 },
+    { locationLatitude: NaN, locationLongitude: -48 },
+  ])
+    assert.equal(listingSchema.safeParse({ ...base, ...patch }).success, false);
+  assert.equal(
+    listingSchema.safeParse({
+      ...base,
+      type: "APPLIANCE",
+      area: 0,
+      bedrooms: 0,
+      details: { condition: "USED" },
+      locationLatitude: -5,
+      locationLongitude: -48,
+    }).success,
+    false,
+  );
+});

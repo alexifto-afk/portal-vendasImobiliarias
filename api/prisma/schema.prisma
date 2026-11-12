@@ -56,6 +56,8 @@ model Listing {
   purpose String
   city String
   neighborhood String
+  locationLatitude Float?
+  locationLongitude Float?
   privateAddress String
   ownerPhone String
   price Int

@@ -215,6 +215,8 @@ function editBody(l = source) {
     city: l.city,
     state: l.state,
     neighborhood: l.neighborhood,
+    locationLatitude: -5.648864,
+    locationLongitude: -48.1236783,
     ownerPhone: l.ownerPhone,
     contactAccepted: true,
     images: ["/uploads/" + newPhoto.id],
@@ -241,6 +243,8 @@ test("edição protege dono e histórico, retira anúncio para revisão e não e
   assert.equal(result.status, 200, JSON.stringify(result));
   const l = result.data;
   assert.equal(l.revision, 1);
+  assert.equal(l.locationLatitude, -5.648864);
+  assert.equal(l.locationLongitude, -48.1236783);
   assert.equal(l.status, "PENDING");
   assert.equal(l.reviewed, false);
   for (const key of [
@@ -284,6 +288,16 @@ test("edição protege dono e histórico, retira anúncio para revisão e não e
     ).status,
     200,
   );
+  const publicListing = await req("/listings/" + source.id, null, null);
+  assert.equal(publicListing.status, 200);
+  assert.equal("locationLatitude" in publicListing.data, false);
+  assert.equal("locationLongitude" in publicListing.data, false);
+  const region = await req("/listings/" + source.id + "/region", null, null);
+  assert.equal(region.status, 200);
+  assert.equal(region.data.latitude, -5.65);
+  assert.equal(region.data.longitude, -48.125);
+  assert.equal(region.data.radiusMeters, 500);
+  assert.equal(region.data.level, "listing");
   assert.equal(await photoStatus(newPhoto.id), 200);
   assert.equal(await photoStatus(photo.id), 404);
   source = await db.listing.findUnique({ where: { id: source.id } });
@@ -373,6 +387,8 @@ test("renovações concorrentes geram um ciclo só, preço e cupom corretos, sem
   assert.equal(renewed.expiresAt, null);
   assert.equal(renewed.commissionBps, 0);
   assert.deepEqual(renewed.images, source.images);
+  assert.equal(renewed.locationLatitude, source.locationLatitude);
+  assert.equal(renewed.locationLongitude, source.locationLongitude);
   assert.equal(renewed.paymentId, null);
   assert.equal(await db.imageUpload.count({ where: { ownerId: owner.id } }), 2);
   assert.equal(

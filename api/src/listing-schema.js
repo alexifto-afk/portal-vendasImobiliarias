@@ -27,6 +27,8 @@ export function listingSchemaFor(existingImages = [], existingLocation = null) {
       city: z.string().trim().min(2).max(100),
       state: z.enum(states).default("TO"),
       neighborhood: z.string().trim().min(2).max(100),
+      locationLatitude: z.number().min(-34).max(6).nullable().default(null),
+      locationLongitude: z.number().min(-74).max(-28).nullable().default(null),
       privateAddress: z.string().trim().max(250).default(""),
       ownerPhone: contactPhone,
       contactAccepted: z.literal(true, {
@@ -78,6 +80,16 @@ export function listingSchemaFor(existingImages = [], existingLocation = null) {
         });
       const issue = (field, message) =>
         ctx.addIssue({ code: "custom", path: field.split("."), message });
+      if ((d.locationLatitude == null) !== (d.locationLongitude == null))
+        issue("locationLatitude", "Marque a localização completa no mapa.");
+      if (
+        category !== "REAL_ESTATE" &&
+        (d.locationLatitude != null || d.locationLongitude != null)
+      )
+        issue(
+          "locationLatitude",
+          "A marcação no mapa é exclusiva dos imóveis.",
+        );
       if (category === "REAL_ESTATE") {
         if (d.area <= 0) issue("area", "Informe a área do imóvel.");
         if (Object.keys(d.details).length)
