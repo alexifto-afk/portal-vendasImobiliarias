@@ -20,10 +20,10 @@ O envio usa a API HTTPS do **Resend**, sem depender de portas SMTP. Para o funci
 4. Em **API Keys**, crie uma chave com permissão de envio para o domínio verificado. Copie a chave diretamente para o Render; não a envie no chat ou para o GitHub.
 5. No Render, abra **portal-vendas-imobiliarias-api → Environment → Edit** e adicione:
 
-| Variável           | Valor                                                                                |
-| ------------------ | ------------------------------------------------------------------------------------ |
-| `RESEND_API_KEY`   | A chave privada criada no Resend                                                     |
-| `RESET_EMAIL_FROM` | Remetente no domínio verificado, por exemplo `LP Imóveis <acesso@seudominio.com.br>` |
+| Variável           | Valor                                                                              |
+| ------------------ | ---------------------------------------------------------------------------------- |
+| `RESEND_API_KEY`   | A chave privada criada no Resend                                                   |
+| `RESET_EMAIL_FROM` | Remetente no domínio verificado, por exemplo `Negocieê <acesso@seudominio.com.br>` |
 
 6. Clique em **Save, rebuild, and deploy** e aguarde **Live**.
 7. Faça um teste com o e-mail de uma conta real do portal, confira o recebimento do código e entre com a nova senha.

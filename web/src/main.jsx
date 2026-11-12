@@ -1,3 +1,4 @@
+import Brand, { brandName, brandSlogan } from "./Brand.jsx";
 import ForgotPassword from "./ForgotPassword.jsx";
 import Customers from "./Customers.jsx";
 import { dashboardFor } from "./partner-access.js";
@@ -208,13 +209,7 @@ function App() {
             go("home");
           }}
         >
-          <span className="brand-icon">
-            <House size={25} />
-          </span>
-          <span>
-            LP<span className="brand-light"> imóveis</span>
-            <small>TOCANTINS · BRASIL</small>
-          </span>
+          <Brand />
         </a>
         <nav className={mobile ? "open" : ""}>
           <button
@@ -322,6 +317,7 @@ function App() {
           <section className="catalog-intro container">
             <div>
               <div className="kicker">IMÓVEIS NO TOCANTINS</div>
+              <p className="catalog-brand-slogan">{brandSlogan}</p>
               <h1>Qual imóvel você procura?</h1>
               <p>
                 Compare casas, lotes e fazendas. Escolha seu imóvel e agende uma
@@ -714,12 +710,7 @@ function App() {
       )}
       <footer>
         <a className="brand" href="#" onClick={() => go("home")}>
-          <span className="brand-icon">
-            <House size={22} />
-          </span>
-          <span>
-            LP imóveis<small>TOCANTINS · BRASIL</small>
-          </span>
+          <Brand />
         </a>
         <div>
           <strong>{config.brokerName}</strong>
@@ -732,7 +723,9 @@ function App() {
           <button onClick={() => setModal("privacy")}>
             Privacidade e condições
           </button>
-          <p>© {new Date().getFullYear()} LP Imóveis</p>
+          <p>
+            © {new Date().getFullYear()} {brandName}
+          </p>
         </div>
       </footer>
       {modal && (
@@ -742,7 +735,7 @@ function App() {
             aria-modal="true"
             aria-label={
               modal === "auth"
-                ? "Acesso ao portal"
+                ? "Acesso ao Negocieê"
                 : modal === "property"
                   ? "Detalhes do imóvel"
                   : "Privacidade e condições"
@@ -1095,7 +1088,7 @@ function Owner({ config, setError }) {
       </div>
       {!config.commercialEnabled && (
         <div className="notice">
-          O portal está em preparação. Novas contratações e cobranças estão
+          O Negocieê está em preparação. Novas contratações e cobranças estão
           desativadas até a configuração comercial.
         </div>
       )}
