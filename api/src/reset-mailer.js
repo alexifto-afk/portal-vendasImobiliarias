@@ -1,6 +1,7 @@
+import { brandName, brandSlogan, brandedSender } from "./brand.js";
 export function createResetMailer(env, fetchImpl = fetch) {
   const token = env.RESEND_API_KEY?.trim(),
-    from = env.RESET_EMAIL_FROM?.trim();
+    from = brandedSender(env.RESET_EMAIL_FROM?.trim());
   const configured = Boolean(token && from && !/[\r\n]/.test(from));
   return {
     configured,
@@ -18,8 +19,8 @@ export function createResetMailer(env, fetchImpl = fetch) {
         body: JSON.stringify({
           from,
           to: [email],
-          subject: "Código para recuperar sua senha — LP Imóveis",
-          text: `Seu código de recuperação do LP Imóveis é: ${code}\n\nEle vale por 10 minutos e pode ser usado apenas uma vez. Use o código mais recente no portal para definir sua nova senha.\n\nNão compartilhe este código. Se você não solicitou a troca de senha, ignore esta mensagem.`,
+          subject: `Código para recuperar sua senha — ${brandName}`,
+          text: `Seu código de recuperação do ${brandName} é: ${code}\n\nEle vale por 10 minutos e pode ser usado apenas uma vez. Use o código mais recente no portal para definir sua nova senha.\n\nNão compartilhe este código. Se você não solicitou a troca de senha, ignore esta mensagem.\n\n${brandName} — ${brandSlogan}`,
         }),
       });
       if (!response.ok)

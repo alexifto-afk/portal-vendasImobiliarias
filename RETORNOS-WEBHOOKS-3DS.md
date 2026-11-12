@@ -4,8 +4,8 @@ Esta atualização complementa as recomendações de qualidade enviadas pelo res
 
 ## O que muda no código
 
-- Novas ordens administrativas de **teste via Orders** incluem `config.statement_descriptor=LPIMOVEIS`, `config.online.success_url`, `failure_url`, `pending_url` HTTPS e `config.online.transaction_security.liability_shift=required`.
-- `WEB_ORIGIN` determina o domínio de retorno. `MP_STATEMENT_DESCRIPTOR` permite alterar o texto da fatura; o portal aceita 1 a 13 letras maiúsculas, números ou espaços. O padrão LPIMOVEIS identifica a marca mostrada no portal.
+- Novas ordens administrativas de **teste via Orders** incluem `config.statement_descriptor=NEGOCIEE`, `config.online.success_url`, `failure_url`, `pending_url` HTTPS e `config.online.transaction_security.liability_shift=required`.
+- `WEB_ORIGIN` determina o domínio de retorno. `MP_STATEMENT_DESCRIPTOR` permite alterar o texto da fatura; o portal aceita 1 a 13 letras maiúsculas, números ou espaços. O padrão NEGOCIEE identifica a marca mostrada no portal.
 - Ao voltar do checkout, o site orienta consultar o status. Parâmetros de retorno não confirmam pagamento nem publicam anúncios.
 - A cobrança comercial existente **continua por Preferences**: mantém os Back URLs HTTPS e recebe `statement_descriptor` no campo correspondente desse schema. A opção 3DS acima aplica-se ao fluxo Orders, não foi copiada como campo incompatível para Preferences. Este PR não migra a cobrança comercial para Orders.
 - O SDK oficial `mercadopago` já foi integrado no PR #7 e permanece em uso. Os testes verificam a presença dos headers de identificação do SDK e a preservação da chave de idempotência. Se a avaliação foi feita com uma ordem anterior ao deploy, não reconhecerá os headers de uma nova requisição. Uma recomendação persistente exige conferir a nova ordem e a avaliação do provedor, sem inventar IDs de integrador.
@@ -18,7 +18,7 @@ Esta atualização complementa as recomendações de qualidade enviadas pelo res
 2. No Render da API deste portal, execute **Manual Deploy → Deploy latest commit**. A Vercel normalmente atualiza automaticamente.
 3. A atualização não adiciona tabelas. Usa a auditoria existente para registrar recebimentos e deduplicar entregas.
 4. Mantenha `WEB_ORIGIN=https://portal-vendas-imobiliarias.vercel.app`, sem barra final. Caso use domínio próprio, configure o domínio HTTPS correspondente.
-5. `MP_STATEMENT_DESCRIPTOR=LPIMOVEIS` é opcional porque esse é o padrão do código. Se definir outro valor, use o nome reconhecível do negócio e respeite o limite.
+5. `MP_STATEMENT_DESCRIPTOR=NEGOCIEE` é opcional porque esse é o padrão do código. Se definir outro valor, use o nome reconhecível do negócio e respeite o limite.
 
 ## Configurar o webhook de TESTE (faça este primeiro)
 

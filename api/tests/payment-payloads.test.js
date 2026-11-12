@@ -83,9 +83,9 @@ test("ordem administrativa inclui metadados de qualidade apenas de simulação n
 test("Orders inclui retorno HTTPS, identificação de fatura e 3DS obrigatório", () => {
   const body = testOrderPayload("reference", "10.00", {
     origin: "https://portal.example/",
-    descriptor: "LPIMOVEIS",
+    descriptor: "NEGOCIEE",
   });
-  assert.equal(body.config.statement_descriptor, "LPIMOVEIS");
+  assert.equal(body.config.statement_descriptor, "NEGOCIEE");
   assert.equal(
     body.config.online.transaction_security.validation,
     "on_fraud_risk",

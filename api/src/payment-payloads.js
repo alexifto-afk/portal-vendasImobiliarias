@@ -1,3 +1,4 @@
+import { brandName, brandDescriptor, statementDescriptor } from "./brand.js";
 import { z } from "zod";
 export function validCpf(value) {
   const cpf = String(value).replace(/\D/g, "");
@@ -42,7 +43,8 @@ export const payerSchema = z.object({
     .transform((s) => s.replace(/\D/g, ""))
     .refine(validCpf, "CPF inválido."),
 });
-export function checkoutConfig(origin, descriptor = "LPIMOVEIS") {
+export function checkoutConfig(origin, descriptor = brandDescriptor) {
+  descriptor = statementDescriptor(descriptor);
   const url = new URL(origin);
   if (url.protocol !== "https:" || url.username || url.password)
     throw Object.assign(
@@ -80,7 +82,7 @@ export function preferencePayload(
   user,
   payer,
   origin,
-  descriptor = "LPIMOVEIS",
+  descriptor = brandDescriptor,
   history,
 ) {
   const registration = new Date(user.createdAt).toISOString();
@@ -90,7 +92,7 @@ export function preferencePayload(
     items: [
       {
         id: listing.id,
-        title: `Anúncio por ${listing.durationDays} dias: ${listing.title}`,
+        title: `${brandName} · Anúncio por ${listing.durationDays} dias: ${listing.title}`,
         description: `Serviço de divulgação de um imóvel no plano ${listing.plan === "FEATURED" ? "Destaque" : "Divulgação"} por ${listing.durationDays} dias. Atendimento e intermediação contratados separadamente.`,
         category_id: "services",
         quantity: 1,
@@ -136,7 +138,7 @@ export function testOrderPayload(reference, amount, options = {}) {
     items: [
       {
         external_code: "PORTAL-TEST-ADVERTISEMENT",
-        title: "Compra de teste do portal",
+        title: `Compra de teste do ${brandName}`,
         description:
           "Simulação do serviço de divulgação de imóvel. Não publica anúncio nem registra receita real.",
         category_id: "services",

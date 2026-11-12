@@ -1,4 +1,6 @@
-# portal-vendasImobiliarias
+# Negocieê
+
+**Seu lugar para comprar, vender e alugar.**
 
 Sistema independente de divulgação e intermediação de casas, lotes e fazendas no Tocantins. **Não compartilha tabelas, credenciais nem implantação com o sistema ALP.**
 
@@ -179,3 +181,7 @@ Veja [CLIENTES-CADASTRADOS.md](CLIENTES-CADASTRADOS.md) para pesquisar usuários
 ## Esqueci minha senha
 
 Veja [RECUPERAR-SENHA.md](RECUPERAR-SENHA.md) para ativar o código de recuperação por e-mail, configurar `RESEND_API_KEY` e `RESET_EMAIL_FROM` no Render e validar a troca de senha e a revogação de sessões anteriores.
+
+## Identidade Negocieê
+
+Veja [IDENTIDADE-NEGOCIEE.md](IDENTIDADE-NEGOCIEE.md) para a marca aprovada, cores, arquivos de logomarca/ícone, aplicação nas telas e atualização dos nomes de e-mail e checkout.

@@ -40,6 +40,8 @@ test("envio usa HTTPS, remetente configurado e idempotência sem retornar códig
     "password-reset-test-request",
   );
   assert.deepEqual(outgoing.body.to, ["private@example.com"]);
+  assert.equal(outgoing.body.from, "Negocieê <no-reply@example.com>");
+  assert.ok(outgoing.body.subject.includes("Negocieê"));
   assert.ok(outgoing.body.text.includes("000123"));
   assert.deepEqual(response, { accepted: true });
 });

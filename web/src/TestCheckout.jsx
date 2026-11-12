@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ArrowUpRight, Copy, RefreshCw } from "lucide-react";
 // O payload mudou; não reutilizar a tentativa de uma configuração anterior.
-const pendingKey = "portal-mp-test-attempt-web-auth-v4";
+const pendingKey = "portal-mp-test-attempt-brand-v5";
 export default function TestCheckout({ request }) {
   const [data, setData] = useState(null),
     [webhooks, setWebhooks] = useState(null),
