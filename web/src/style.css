@@ -2775,3 +2775,23 @@ footer .brand-tagline {
     height: 320px;
   }
 }
+
+.whatsapp-message-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  background: #f0eefc;
+  padding: 18px;
+  border-radius: 12px;
+}
+.whatsapp-ad-options {
+  max-height: 320px;
+  overflow: auto;
+  margin: 16px 0;
+}
+.whatsapp-signup {
+  margin: 28px 0;
+}
+.whatsapp-campaign-card > button {
+  margin: 6px 8px 6px 0;
+}

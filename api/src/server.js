@@ -1,3 +1,4 @@
+import { registerWhatsappCampaigns } from "./whatsapp-campaigns.js";
 import { registerReportingRoutes } from "./reporting.js";
 import { registerLocationRoutes } from "./locations.js";
 import { registerListingLifecycle } from "./listing-lifecycle.js";
@@ -81,7 +82,18 @@ app.disable("x-powered-by");
 app.set("trust proxy", env.NODE_ENV === "production" ? 1 : false);
 app.use(helmet());
 app.use(cors({ origin: webOrigin }));
-app.use(express.json({ limit: "100kb" }));
+app.use(
+  express.json({
+    limit: "100kb",
+    verify: (request, _response, buffer) => {
+      if (
+        request.originalUrl.split("?")[0].replace(/\/$/, "") ===
+        "/api/whatsapp/webhook"
+      )
+        request.rawBody = buffer;
+    },
+  }),
+);
 app.use(
   "/api",
   rateLimit({
@@ -176,6 +188,15 @@ const getCommercial = registerCommercialRoutes(app, {
   audit,
 });
 registerPartnerRoutes(app, { db, auth, admin, wrap, getCommercial, audit });
+registerWhatsappCampaigns(app, {
+  db,
+  auth,
+  admin,
+  wrap,
+  env,
+  webOrigin,
+  audit,
+});
 registerListingLifecycle(app, {
   db,
   auth,
