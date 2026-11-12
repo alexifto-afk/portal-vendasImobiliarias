@@ -312,7 +312,7 @@ test("cadastro de parceiro exige conta comum existente e cupom exige margem, val
       await call("/admin/coupons", "admin", {
         ...input,
         discountCents: 500,
-        holdDays: 0,
+        holdDays: -1,
       })
     ).status,
     400,
@@ -320,10 +320,10 @@ test("cadastro de parceiro exige conta comum existente e cupom exige margem, val
   const result = await call("/admin/coupons", "admin", {
     ...input,
     discountCents: 500,
-    holdDays: 1,
+    holdDays: 0,
   });
   assert.equal(result.status, 201);
-  assert.equal(result.data.holdDays, 1);
+  assert.equal(result.data.holdDays, 0);
   assert.equal(
     (
       await call(
@@ -487,6 +487,17 @@ test("webhooks e consulta de pagamento concorrentes geram um único crédito com
     (await call("/partner/dashboard", "other")).data.entries.length,
     0,
   );
+});
+test("prazo zero libera crédito na confirmação e preserva idempotência", async () => {
+  await clearEntries();
+  const paidAt = new Date();
+  const l = await paidListing({ partnerHoldDays: 0, paidAt });
+  await serial((tx) => creditPartner(tx, l, l.paymentId));
+  const ledger = await entries();
+  assert.equal(ledger.length, 1);
+  assert.equal(ledger[0].availableAt.getTime(), paidAt.getTime());
+  assert.equal(partnerBalances(ledger).available, 500);
+  assert.equal(partnerBalances(ledger).pending, 0);
 });
 test("saque bloqueia crédito ainda no prazo de liberação", async () => {
   await clearEntries();

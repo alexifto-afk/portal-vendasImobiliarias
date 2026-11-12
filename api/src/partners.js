@@ -14,7 +14,7 @@ const couponInput = z.object({
   active: z.boolean(),
   discountCents: cents,
   rewardCents: cents,
-  holdDays: z.number().int().min(1).max(365),
+  holdDays: z.number().int().min(0).max(365),
   plans: z
     .array(z.enum(["BASIC", "FEATURED"]))
     .min(1)
