@@ -87,7 +87,7 @@ function CouponForm({ initial, partners, onSave }) {
           label="Liberação do crédito (dias)"
           name="holdDays"
           type="number"
-          min="7"
+          min="1"
           max="365"
           required
           defaultValue={initial?.holdDays || ""}
@@ -139,7 +139,7 @@ function CouponForm({ initial, partners, onSave }) {
       )}
       <p className="form-help">
         O limite reserva uma utilização no cadastro, mesmo antes do pagamento. O
-        prazo de liberação pode ser de 7 a 365 dias.
+        prazo de liberação pode ser de 1 a 365 dias.
       </p>
       {initial && (
         <p className="notice">

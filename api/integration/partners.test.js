@@ -320,9 +320,10 @@ test("cadastro de parceiro exige conta comum existente e cupom exige margem, val
   const result = await call("/admin/coupons", "admin", {
     ...input,
     discountCents: 500,
-    holdDays: 7,
+    holdDays: 1,
   });
   assert.equal(result.status, 201);
+  assert.equal(result.data.holdDays, 1);
   assert.equal(
     (
       await call(
