@@ -192,3 +192,7 @@ Veja [MAPA-APROXIMADO-IMOVEIS.md](MAPA-APROXIMADO-IMOVEIS.md) para o botão Mapa
 ## Gestão e renovação dos anúncios
 
 Veja [EDITAR-EXCLUIR-RENOVAR-ANUNCIOS.md](EDITAR-EXCLUIR-RENOVAR-ANUNCIOS.md) para editar anúncios pagos sem estender o prazo, excluir a divulgação preservando o histórico e contratar mais 30 dias com cupom e novo crédito ao parceiro após pagamento confirmado.
+
+## UF e cidades
+
+Veja [UF-E-CIDADES.md](UF-E-CIDADES.md) para seleção de cidades por estado na busca e no cadastro/edição, validação da localidade e atualização da referência de municípios.

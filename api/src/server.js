@@ -1,3 +1,4 @@
+import { registerLocationRoutes } from "./locations.js";
 import { registerListingLifecycle } from "./listing-lifecycle.js";
 import { registerListingRegionRoutes } from "./listing-region.js";
 import { registerVehicleCatalog } from "./vehicle-catalog.js";
@@ -154,6 +155,7 @@ async function mp(path, options = {}) {
   }
 }
 registerVehicleCatalog(app, { wrap });
+registerLocationRoutes(app, { wrap });
 registerListingRegionRoutes(app, { db, wrap, publicWhere });
 app.get("/api/health", (_q, r) => r.json({ ok: true }));
 const getCommercial = registerCommercialRoutes(app, {
@@ -244,7 +246,10 @@ app.get(
               }
             : {}),
           city: filter.city
-            ? { contains: filter.city, mode: "insensitive" }
+            ? {
+                [filter.state ? "equals" : "contains"]: filter.city,
+                mode: "insensitive",
+              }
             : undefined,
         },
         select: publicFields,

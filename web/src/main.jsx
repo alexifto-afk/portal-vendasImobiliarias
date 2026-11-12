@@ -1,3 +1,4 @@
+import StateCityFields from "./StateCityFields.jsx";
 import RecordsTable from "./RecordsTable.jsx";
 import RenewListing from "./RenewListing.jsx";
 import { listingState } from "./listing-lifecycle.js";
@@ -9,7 +10,6 @@ import {
   categories,
   categoryFor,
   typeNames,
-  states,
   listingFeatures,
 } from "./classified-catalog.js";
 import Brand, { brandName, brandSlogan } from "./Brand.jsx";
@@ -438,19 +438,14 @@ function App() {
                   ))}
                 </select>
               </Field>
-              <Field label="Cidade">
-                <div className="input-icon">
-                  <MapPin size={18} />
-                  <input
-                    aria-label="Cidade"
-                    placeholder="Ex.: Palmas"
-                    value={filters.city}
-                    onChange={(e) =>
-                      setFilters({ ...filters, city: e.target.value })
-                    }
-                  />
-                </div>
-              </Field>
+              <StateCityFields
+                value={filters}
+                onChange={(location) =>
+                  setFilters((previous) => ({ ...previous, ...location }))
+                }
+                request={api}
+                allowAll
+              />
               <Field label="Tipo de anúncio">
                 <select
                   value={filters.type}
@@ -467,19 +462,6 @@ function App() {
                     <option key={id} value={id}>
                       {label}
                     </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Estado">
-                <select
-                  value={filters.state}
-                  onChange={(e) =>
-                    setFilters({ ...filters, state: e.target.value })
-                  }
-                >
-                  <option value="">Todos os estados</option>
-                  {states.map((state) => (
-                    <option key={state}>{state}</option>
                   ))}
                 </select>
               </Field>
