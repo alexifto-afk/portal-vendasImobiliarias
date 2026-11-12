@@ -1,0 +1,16 @@
+{
+  "source": "https://github.com/kelvins/municipios-brasileiros",
+  "files": [
+    "json/estados.json",
+    "json/municipios.json"
+  ],
+  "consultedAt": "2026-11-12",
+  "license": "MIT; see MUNICIPALITIES-LICENSE.txt",
+  "rawSha256": {
+    "states": "2d738d2438a0917387c59d4264502d80cf995cbe6622aed608657dff995cc7ff",
+    "cities": "b14992cbd4a2a6b383f2165cd9b1a997df5da4d8081017bd2c83582f9996bf64"
+  },
+  "stateCount": 27,
+  "cityCount": 5571,
+  "note": "Municipality names/IBGE codes from the reference repository; direct IBGE API was unavailable during compilation. Boa Esperança do Norte (5101837) was independently confirmed on its IBGE city page."
+}

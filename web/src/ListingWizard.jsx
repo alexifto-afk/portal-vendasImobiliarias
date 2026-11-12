@@ -1,3 +1,4 @@
+import StateCityFields from "./StateCityFields.jsx";
 import { listingFormValues, retainedPhotos } from "./listing-lifecycle.js";
 import VehicleFields from "./VehicleFields.jsx";
 import MaskedInput from "./MaskedInput.jsx";
@@ -6,7 +7,6 @@ import {
   categories,
   categoryFor,
   typeNames,
-  states,
   listingFeatures,
 } from "./classified-catalog.js";
 import { PhotoPicker } from "./media.jsx";
@@ -62,7 +62,8 @@ export default function ListingWizard({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [photoReady, setPhotoReady] = useState(!editing),
-    [photoRetry, setPhotoRetry] = useState(0);
+    [photoRetry, setPhotoRetry] = useState(0),
+    [locationReady, setLocationReady] = useState(false);
   const formRef = useRef(),
     photoRef = useRef(photos);
   photoRef.current = photos;
@@ -150,6 +151,11 @@ export default function ListingWizard({
     ) {
       setStep(1);
       setError("Selecione marca, modelo e ano do veículo antes de continuar.");
+      return false;
+    }
+    if (index === 3 && !locationReady) {
+      setStep(3);
+      setError("Selecione o estado e uma cidade da lista antes de continuar.");
       return false;
     }
     if (index === 2 && !photos.length) {
@@ -455,24 +461,23 @@ export default function ListingWizard({
         <section data-step="3" hidden={step !== 3}>
           <h3 tabIndex={-1}>Onde está e como falar com você?</h3>
           <div className="form-grid">
-            <label className="field">
-              <span>Estado</span>
-              <select
-                value={values.state}
-                onChange={(e) =>
-                  setValues((v) => ({ ...v, state: e.target.value }))
-                }
-              >
-                {states.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </label>
-            {input("city", "Cidade", {
-              required: true,
-              minLength: 2,
-              maxLength: 100,
-            })}
+            <StateCityFields
+              value={values}
+              onChange={(location) =>
+                setValues((previous) => ({ ...previous, ...location }))
+              }
+              request={request}
+              required
+              legacyLocation={
+                editing
+                  ? {
+                      state: initialListing.state || "TO",
+                      city: initialListing.city,
+                    }
+                  : null
+              }
+              onReadyChange={setLocationReady}
+            />
             {input("neighborhood", "Bairro ou região", {
               required: true,
               minLength: 2,

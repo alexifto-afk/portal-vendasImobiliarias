@@ -39,7 +39,7 @@ export function parseEdit(body, l) {
       "O anúncio mudou. Atualize o painel antes de editar novamente.",
     );
   const { termsAccepted, termsVersion, couponCode, couponVersion, ...data } =
-    listingSchemaFor(l.images).parse({
+    listingSchemaFor(l.images, { state: l.state, city: l.city }).parse({
       ...body,
       termsAccepted: true,
       termsVersion: l.termsVersion,

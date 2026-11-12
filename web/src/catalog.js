@@ -26,7 +26,10 @@ export function findListings(listings, filters, sort = "recommended") {
         ).includes(normalize(filters.search))) &&
       (!filters.purpose || l.purpose === filters.purpose) &&
       (!filters.type || l.type === filters.type) &&
-      (!filters.city || normalize(l.city).includes(normalize(filters.city))) &&
+      (!filters.city ||
+        (filters.state
+          ? normalize(l.city) === normalize(filters.city)
+          : normalize(l.city).includes(normalize(filters.city)))) &&
       (!filters.maxPrice || l.price <= Number(filters.maxPrice) * 100),
   );
   if (sort === "price-asc") result.sort((a, b) => a.price - b.price);

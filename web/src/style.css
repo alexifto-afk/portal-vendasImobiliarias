@@ -2692,3 +2692,14 @@ footer .brand-tagline {
     width: 100%;
   }
 }
+
+.state-city-field {
+  min-width: 0;
+}
+.state-city-field select {
+  max-width: 100%;
+}
+.state-city-field .form-help {
+  margin: 6px 0 0;
+  font-size: 12px;
+}

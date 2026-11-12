@@ -1,3 +1,4 @@
+import { cityForState } from "./locations.js";
 import { z } from "zod";
 import { categoryFor, typeNames, states } from "./classified-catalog.js";
 import { uploadId } from "./image-uploads.js";
@@ -10,7 +11,7 @@ export const contactPhone = z
     (s) => /^[1-9]{2}9\d{8}$/.test(s),
     "Informe um WhatsApp válido com DDD.",
   );
-export function listingSchemaFor(existingImages = []) {
+export function listingSchemaFor(existingImages = [], existingLocation = null) {
   const retained = new Set(
     existingImages.filter((src) => src.startsWith("https://")),
   );
@@ -65,6 +66,16 @@ export function listingSchemaFor(existingImages = []) {
     })
     .superRefine((d, ctx) => {
       const category = categoryFor(d.type);
+      const legacyLocation =
+        existingLocation &&
+        d.city === existingLocation.city &&
+        d.state === existingLocation.state;
+      if (!cityForState(d.state, d.city) && !legacyLocation)
+        ctx.addIssue({
+          code: "custom",
+          path: ["city"],
+          message: "Selecione uma cidade válida para o estado informado.",
+        });
       const issue = (field, message) =>
         ctx.addIssue({ code: "custom", path: field.split("."), message });
       if (category === "REAL_ESTATE") {
@@ -86,6 +97,7 @@ export function listingSchemaFor(existingImages = []) {
     })
     .transform(({ contactAccepted, ...d }) => ({
       ...d,
+      city: cityForState(d.state, d.city)?.name || d.city,
       category: categoryFor(d.type),
       contactMode: "DIRECT",
     }));
