@@ -58,6 +58,7 @@ export function parseEdit(body, l) {
     [
       "title",
       "description",
+      "virtualTourUrl",
       "city",
       "state",
       "neighborhood",
@@ -244,6 +245,7 @@ export function registerListingLifecycle(
             [
               "title",
               "description",
+              "virtualTourUrl",
               "type",
               "category",
               "purpose",

@@ -1,3 +1,5 @@
+import VirtualTour from "./VirtualTour.jsx";
+import { tourLink } from "./tour-links.js";
 import LocationPicker from "./LocationPicker.jsx";
 import StateCityFields from "./StateCityFields.jsx";
 import { listingFormValues, retainedPhotos } from "./listing-lifecycle.js";
@@ -29,6 +31,7 @@ const fresh = {
   purpose: "SALE",
   title: "",
   description: "",
+  virtualTourUrl: "",
   price: "",
   area: "",
   bedrooms: "0",
@@ -180,6 +183,17 @@ export default function ListingWizard({
       );
       return false;
     }
+    if (
+      index === 2 &&
+      values.virtualTourUrl.trim() &&
+      !tourLink(values.virtualTourUrl)
+    ) {
+      setStep(2);
+      setError(
+        "Informe um link HTTPS de tour público do Matterport, Kuula ou Sketchfab, ou remova o link para continuar.",
+      );
+      return false;
+    }
     if (index === 2 && !photos.length) {
       setStep(2);
       setError("Selecione pelo menos uma foto.");
@@ -232,6 +246,7 @@ export default function ListingWizard({
         purpose: values.purpose,
         title: values.title,
         description: values.description,
+        virtualTourUrl: values.virtualTourUrl.trim() || null,
         price: Math.round(Number(values.price) * 100),
         area: realEstate ? Number(values.area) : 0,
         bedrooms: realEstate ? Number(values.bedrooms) : 0,
@@ -481,6 +496,41 @@ export default function ListingWizard({
             disabled={busy || !photoReady}
             request={request}
           />
+          <section className="tour-editor">
+            <h4>Tour virtual ou visualização 360° (opcional)</h4>
+            <p className="form-help">
+              Para imóveis, veículos e outros produtos. Cole o link público de
+              um tour pronto do Matterport ou Kuula, ou de um modelo 3D
+              interativo do Sketchfab. Fotos comuns não se transformam
+              automaticamente em 360°.
+            </p>
+            {input("virtualTourUrl", "Link do tour ou visualização 360°", {
+              type: "url",
+              maxLength: 800,
+              placeholder: "https://...",
+            })}
+            {values.virtualTourUrl && !tourLink(values.virtualTourUrl) && (
+              <p className="form-help" role="status">
+                Use um link público HTTPS do Matterport, Kuula ou Sketchfab.
+              </p>
+            )}
+            <VirtualTour
+              url={values.virtualTourUrl}
+              title={values.title || "Seu anúncio"}
+              preview
+            />
+            {values.virtualTourUrl && (
+              <button
+                className="text-button"
+                type="button"
+                onClick={() =>
+                  setValues((previous) => ({ ...previous, virtualTourUrl: "" }))
+                }
+              >
+                Remover tour
+              </button>
+            )}
+          </section>
         </section>
         <section data-step="3" hidden={step !== 3}>
           <h3 tabIndex={-1}>Onde está e como falar com você?</h3>
@@ -593,6 +643,11 @@ export default function ListingWizard({
             </div>
           </div>
           <p className="description">{values.description}</p>
+          <VirtualTour
+            url={values.virtualTourUrl}
+            title={values.title || "Seu anúncio"}
+            preview
+          />
           {editing ? (
             <>
               <p className="notice">

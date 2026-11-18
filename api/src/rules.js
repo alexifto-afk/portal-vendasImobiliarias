@@ -38,6 +38,7 @@ export const publicFields = {
   id: true,
   title: true,
   description: true,
+  virtualTourUrl: true,
   type: true,
   category: true,
   state: true,

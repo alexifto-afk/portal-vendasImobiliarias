@@ -2795,3 +2795,38 @@ footer .brand-tagline {
 .whatsapp-campaign-card > button {
   margin: 6px 8px 6px 0;
 }
+
+.virtual-tour {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+}
+.tour-editor {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #dddbea;
+}
+.virtual-tour-dialog {
+  width: min(1100px, 96vw);
+  max-width: 1100px;
+}
+.virtual-tour-frame {
+  display: block;
+  width: 100%;
+  height: min(62vh, 620px);
+  min-height: 280px;
+  border: 0;
+  border-radius: 12px;
+  background: #eeeef5;
+}
+@media (max-width: 600px) {
+  .virtual-tour-frame {
+    height: 55vh;
+    min-height: 260px;
+  }
+  .virtual-tour-dialog {
+    padding: 24px 16px;
+  }
+}

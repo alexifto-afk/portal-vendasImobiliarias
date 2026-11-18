@@ -1,3 +1,4 @@
+import { tourLink } from "./tour-links.js";
 import { cityForState } from "./locations.js";
 import { z } from "zod";
 import { categoryFor, typeNames, states } from "./classified-catalog.js";
@@ -21,6 +22,18 @@ export function listingSchemaFor(existingImages = [], existingLocation = null) {
       couponVersion: z.string().datetime().optional(),
       title: z.string().trim().min(8).max(100),
       description: z.string().trim().min(30).max(5000),
+      virtualTourUrl: z
+        .string()
+        .trim()
+        .max(800)
+        .nullable()
+        .optional()
+        .transform((value) => value || null)
+        .refine(
+          (value) => value == null || Boolean(tourLink(value)),
+          "Informe um link HTTPS de tour público do Matterport, Kuula ou Sketchfab.",
+        )
+        .transform((value) => (value ? tourLink(value).url : null)),
       type: z.enum(Object.keys(typeNames)),
       purpose: z.enum(["SALE", "RENT"]),
       plan: z.enum(["BASIC", "FEATURED"]),

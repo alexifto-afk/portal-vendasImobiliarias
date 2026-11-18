@@ -30,6 +30,7 @@ export function listingFormValues(l) {
     purpose: l.purpose,
     title: l.title,
     description: l.description,
+    virtualTourUrl: l.virtualTourUrl || "",
     price: String(l.price / 100),
     area: String(l.area),
     bedrooms: String(l.bedrooms),

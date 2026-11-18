@@ -48,6 +48,7 @@ model Listing {
   renewals Listing[] @relation("ListingRenewals")
   title String
   description String
+  virtualTourUrl String?
   type String
   category String @default("REAL_ESTATE")
   state String @default("TO")
