@@ -1,3 +1,4 @@
+import VirtualTour from "./VirtualTour.jsx";
 import WhatsappAdmin, { WhatsappSignup } from "./WhatsappCampaigns.jsx";
 import Reports, { PdfButton } from "./Reports.jsx";
 import ListingGallery from "./ListingGallery.jsx";
@@ -1034,6 +1035,7 @@ function Property({ listing: l, demo }) {
       <p className="description">
         {l.description || "Anúncio ilustrativo. Não se trata de oferta real."}
       </p>
+      {!demo && <VirtualTour url={l.virtualTourUrl} title={l.title} />}
       {!demo && !realEstate && <ListingRegionMap key={l.id} listing={l} />}
       {demo ? (
         <div className="notice">
@@ -1569,6 +1571,7 @@ function Admin({ config, setError, onConfigChange, userName }) {
                     {l.owner.name} · {l.owner.email} · {l.ownerPhone}
                   </p>
                   <p>Endereço privado: {l.privateAddress}</p>
+                  <VirtualTour url={l.virtualTourUrl} title={l.title} preview />
                   <p>
                     {l.deletedAt
                       ? "Excluído pelo anunciante"

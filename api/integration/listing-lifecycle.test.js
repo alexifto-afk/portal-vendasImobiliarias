@@ -207,6 +207,7 @@ function editBody(l = source) {
     purpose: l.purpose,
     plan: l.plan,
     title: "Casa com descrição editada",
+    virtualTourUrl: "https://kuula.co/post/7m2Gb?logo=0",
     description:
       "Descrição nova, completa e detalhada da casa que está anunciada.",
     price: 16000000,
@@ -243,6 +244,7 @@ test("edição protege dono e histórico, retira anúncio para revisão e não e
   assert.equal(result.status, 200, JSON.stringify(result));
   const l = result.data;
   assert.equal(l.revision, 1);
+  assert.equal(l.virtualTourUrl, "https://kuula.co/share/7m2Gb");
   assert.equal(l.locationLatitude, -5.648864);
   assert.equal(l.locationLongitude, -48.1236783);
   assert.equal(l.status, "PENDING");
@@ -290,6 +292,10 @@ test("edição protege dono e histórico, retira anúncio para revisão e não e
   );
   const publicListing = await req("/listings/" + source.id, null, null);
   assert.equal(publicListing.status, 200);
+  assert.equal(
+    publicListing.data.virtualTourUrl,
+    "https://kuula.co/share/7m2Gb",
+  );
   assert.equal("locationLatitude" in publicListing.data, false);
   assert.equal("locationLongitude" in publicListing.data, false);
   const region = await req("/listings/" + source.id + "/region", null, null);
@@ -387,6 +393,7 @@ test("renovações concorrentes geram um ciclo só, preço e cupom corretos, sem
   assert.equal(renewed.expiresAt, null);
   assert.equal(renewed.commissionBps, 0);
   assert.deepEqual(renewed.images, source.images);
+  assert.equal(renewed.virtualTourUrl, source.virtualTourUrl);
   assert.equal(renewed.locationLatitude, source.locationLatitude);
   assert.equal(renewed.locationLongitude, source.locationLongitude);
   assert.equal(renewed.paymentId, null);
