@@ -1,3 +1,5 @@
+import ListingTemplates from "./ListingTemplates.jsx";
+import { hasTemplatePlaceholders } from "./listing-templates.js";
 import VirtualTour from "./VirtualTour.jsx";
 import { tourLink } from "./tour-links.js";
 import LocationPicker from "./LocationPicker.jsx";
@@ -191,6 +193,17 @@ export default function ListingWizard({
       setStep(2);
       setError(
         "Informe um link HTTPS de tour público do Matterport, Kuula ou Sketchfab, ou remova o link para continuar.",
+      );
+      return false;
+    }
+    if (
+      index === 1 &&
+      (hasTemplatePlaceholders(values.title) ||
+        hasTemplatePlaceholders(values.description))
+    ) {
+      setStep(1);
+      setError(
+        "Personalize o título e a descrição: substitua todos os trechos [preencha: …] por informações do seu anúncio antes de continuar.",
       );
       return false;
     }
@@ -404,6 +417,20 @@ export default function ListingWizard({
               contratação.
             </p>
           )}
+          <ListingTemplates
+            values={values}
+            onApply={(patch) => {
+              setValues((previous) => ({ ...previous, ...patch }));
+              setError("");
+              requestAnimationFrame(() =>
+                formRef.current
+                  ?.querySelector(
+                    `[name="${patch.title != null ? "title" : "description"}"]`,
+                  )
+                  ?.focus(),
+              );
+            }}
+          />
           <div className="form-grid">
             {input("title", "Título do anúncio", {
               required: true,

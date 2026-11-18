@@ -131,3 +131,19 @@ test("coordenadas do imóvel exigem par válido e não são aceitas em outras ca
     false,
   );
 });
+
+test("título e descrição não podem publicar marcadores de modelo ainda não preenchidos", () => {
+  for (const field of ["title", "description"]) {
+    const result = listingSchema.safeParse({
+      ...base,
+      [field]: base[field] + " [preencha: destaque]",
+    });
+    assert.equal(result.success, false);
+    assert.ok(result.error.issues.some((issue) => issue.path[0] === field));
+  }
+  assert.equal(
+    listingSchema.safeParse({ ...base, title: "Produto [novo] para venda" })
+      .success,
+    true,
+  );
+});

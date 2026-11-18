@@ -93,6 +93,13 @@ export function listingSchemaFor(existingImages = [], existingLocation = null) {
         });
       const issue = (field, message) =>
         ctx.addIssue({ code: "custom", path: field.split("."), message });
+      for (const field of ["title", "description"]) {
+        if (/\[preencha\s*:/i.test(d[field]))
+          issue(
+            field,
+            "Substitua os trechos [preencha: …] pelas informações do seu anúncio.",
+          );
+      }
       if ((d.locationLatitude == null) !== (d.locationLongitude == null))
         issue("locationLatitude", "Marque a localização completa no mapa.");
       if (
